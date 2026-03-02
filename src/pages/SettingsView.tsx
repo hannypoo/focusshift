@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Clock, Sparkles, Download, Upload, UtensilsCrossed, Heart, Zap, Gift, Trash2, LogOut } from 'lucide-react';
+import { Clock, Sparkles, Download, Upload, UtensilsCrossed, Heart, Zap, Gift, LogOut } from 'lucide-react';
 import { toast } from 'sonner';
 import { useProfile, useUpdateProfile } from '../hooks/useProfile';
 import { useAuth } from '../context/AuthContext';

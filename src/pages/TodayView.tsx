@@ -19,7 +19,6 @@ import { useLocations } from '../hooks/useLocations';
 import { useTravelTimes } from '../hooks/useTravelTimes';
 import { useNeglect } from '../hooks/useNeglect';
 import { useRewardEngine } from '../hooks/useRewardEngine';
-import { useUpsertTravelTime } from '../hooks/useTravelTimes';
 import { getToday } from '../lib/utils';
 import { buildAndGenerateSchedule } from '../lib/scheduleAdapter';
 import type { EnergyLevel, TaskDifficulty } from '../types/database';
@@ -42,7 +41,6 @@ export default function TodayView() {
   const upsertCheckin = useUpsertDailyCheckin();
   const recordHistory = useRecordTaskHistory();
   const { earnReward, todayStats } = useRewardEngine();
-  const upsertTravelTime = useUpsertTravelTime();
 
   // Multitaskable tasks for "While you wait/travel" suggestions
   const multitaskableTasks = useMemo(

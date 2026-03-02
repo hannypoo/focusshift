@@ -51,6 +51,8 @@ export default function AppointmentForm({ onClose }: AppointmentFormProps) {
       course_name: null,
       syllabus_text: null,
       difficulty_score: null,
+      difficulty: null,
+      is_multitaskable: false,
       is_recurring: false,
       recurring_task_id: null,
     });

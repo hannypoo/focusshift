@@ -14,7 +14,7 @@ import type {
   ProductivityZone,
   TaskDifficulty,
 } from '../types/database';
-import { generateId, parseTimeToMinutes, minutesToTime } from './utils';
+import { parseTimeToMinutes, minutesToTime } from './utils';
 import { getTravelMinutes } from './travel';
 // profileId passed via SchedulerInput
 

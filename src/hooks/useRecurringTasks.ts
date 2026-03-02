@@ -88,6 +88,8 @@ export async function spawnRecurringInstances(
       course_name: null,
       syllabus_text: null,
       difficulty_score: null,
+      difficulty: null,
+      is_multitaskable: false,
       is_recurring: true,
       recurring_task_id: rt.id,
     });

@@ -69,6 +69,8 @@ export default function HomeworkForm({ onClose }: HomeworkFormProps) {
         course_name: courseName || null,
         syllabus_text: text.substring(0, 500),
         difficulty_score: estimate.difficulty,
+        difficulty: null,
+        is_multitaskable: false,
         is_recurring: false,
         recurring_task_id: null,
       });

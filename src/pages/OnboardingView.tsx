@@ -129,11 +129,15 @@ export default function OnboardingView({ onComplete }: OnboardingViewProps) {
     for (const idx of selectedRecurring) {
       const r = COMMON_RECURRING[idx];
       await createRecurring.mutateAsync({
+        profile_id: profileId,
         title: r.title,
         task_type: 'appointment',
+        category_id: null,
         frequency: 'weekly',
         days_of_week: r.days,
+        times_per_week: null,
         estimated_minutes: r.duration,
+        location_id: null,
         start_time: r.time,
         end_time: minutesAfter(r.time, r.duration),
         enabled: true,
