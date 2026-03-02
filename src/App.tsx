@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import AppShell from './components/AppShell';
 
@@ -30,6 +30,11 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function OnboardingWrapper() {
+  const navigate = useNavigate();
+  return <OnboardingView onComplete={() => navigate('/')} />;
+}
+
 export default function App() {
   return (
     <Suspense fallback={<LoadingFallback />}>
@@ -40,7 +45,7 @@ export default function App() {
 
         {/* Protected routes */}
         <Route path="/onboarding" element={
-          <AuthGuard><OnboardingView /></AuthGuard>
+          <AuthGuard><OnboardingWrapper /></AuthGuard>
         } />
         <Route path="/*" element={
           <AuthGuard>
