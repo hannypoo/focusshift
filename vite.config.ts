@@ -11,8 +11,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg'],
       manifest: {
-        name: 'FocusShift',
-        short_name: 'FocusShift',
+        name: 'Offload',
+        short_name: 'Offload',
         description: 'AI-powered ADHD life management — schedule, tasks, goals, and chat assistant',
         theme_color: '#0f172a',
         background_color: '#0f172a',

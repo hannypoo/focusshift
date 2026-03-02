@@ -67,7 +67,7 @@ export default function ProductivityZoneSetup({ zones, onChange }: ProductivityZ
       </div>
 
       <p className="text-[11px] text-white/20 text-center">
-        Leave blank if you're not sure — FocusShift will learn your patterns over time.
+        Leave blank if you're not sure — Offload will learn your patterns over time.
       </p>
     </div>
   );

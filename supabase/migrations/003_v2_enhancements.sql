@@ -1,4 +1,4 @@
--- FocusShift v2 Enhancements — Schema Migration
+-- Offload v2 Enhancements — Schema Migration
 -- Run after 001_initial_schema.sql + 002_seed_data.sql
 
 -- ─── New Enum ─────────────────────────────────────────────────────

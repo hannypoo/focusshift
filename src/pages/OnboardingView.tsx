@@ -20,7 +20,7 @@ interface OnboardingViewProps {
 }
 
 const STEPS = [
-  { icon: Sparkles, title: 'Welcome', subtitle: "Let's set up FocusShift for you" },
+  { icon: Sparkles, title: 'Welcome', subtitle: "Let's set up Offload for you" },
   { icon: Clock, title: 'Schedule', subtitle: 'When does your day start and end?' },
   { icon: Zap, title: 'Energy Zones', subtitle: 'When are you most productive?' },
   { icon: UtensilsCrossed, title: 'Meals', subtitle: 'Protect your mealtimes' },
@@ -348,7 +348,7 @@ export default function OnboardingView({ onComplete }: OnboardingViewProps) {
           {step === 9 && (
             <div className="text-center space-y-3">
               <p className="text-white/50 text-sm">
-                FocusShift will learn how long things actually take and improve your schedule over time.
+                Offload will learn how long things actually take and improve your schedule over time.
               </p>
               <p className="text-white/30 text-xs">
                 No pressure. Miss something? It just moves to tomorrow. No guilt.

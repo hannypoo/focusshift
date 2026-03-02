@@ -49,7 +49,7 @@ export default function LoginView() {
         <div className="text-center">
           <div className="flex items-center justify-center gap-2 mb-2">
             <Zap size={32} className="text-indigo-400" />
-            <h1 className="text-3xl font-bold text-white">FocusShift</h1>
+            <h1 className="text-3xl font-bold text-white">Offload</h1>
           </div>
           <p className="text-white/40 text-sm">Your ADHD-friendly life manager</p>
         </div>

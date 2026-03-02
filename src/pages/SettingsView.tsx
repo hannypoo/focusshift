@@ -166,7 +166,7 @@ export default function SettingsView() {
           </div>
         </Section>
 
-        <p className="text-center text-[10px] text-white/15 py-4">FocusShift v2.0 · Made with focus</p>
+        <p className="text-center text-[10px] text-white/15 py-4">Offload v2.0 · Made with focus</p>
       </div>
     </div>
   );

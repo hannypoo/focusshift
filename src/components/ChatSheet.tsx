@@ -79,7 +79,7 @@ export default function ChatSheet({ expanded, onToggle }: ChatSheetProps) {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            placeholder="Ask FocusShift AI..."
+            placeholder="Ask Offload AI..."
             className="flex-1 h-10 bg-white/5 rounded-xl px-3 text-sm text-white placeholder:text-white/20 border border-white/5 outline-none"
           />
           <button
@@ -102,7 +102,7 @@ export default function ChatSheet({ expanded, onToggle }: ChatSheetProps) {
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
         <div className="flex items-center gap-2">
           <Bot size={20} className="text-indigo-400" />
-          <h2 className="text-sm font-semibold text-white">FocusShift AI</h2>
+          <h2 className="text-sm font-semibold text-white">Offload AI</h2>
         </div>
         <button
           onClick={onToggle}

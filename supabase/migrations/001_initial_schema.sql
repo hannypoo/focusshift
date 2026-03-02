@@ -1,4 +1,4 @@
--- FocusShift v2 — Full Schema Migration
+-- Offload v2 — Full Schema Migration
 -- Run this in Supabase SQL Editor
 
 -- ─── Enums ──────────────────────────────────────────────────────────

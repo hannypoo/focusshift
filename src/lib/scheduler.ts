@@ -1,5 +1,5 @@
 /**
- * FocusShift v2 Scheduler — 5-stage ADHD-centric pipeline
+ * Offload v2 Scheduler — 5-stage ADHD-centric pipeline
  *
  * Pipeline: ANCHOR → TRAVEL → BUFFER → FILL → OVERLAP RESOLUTION
  */

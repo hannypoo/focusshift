@@ -79,7 +79,7 @@ export default function ChatBubble() {
         <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
           <div className="flex items-center gap-2">
             <Bot size={20} className="text-indigo-400" />
-            <h2 className="text-sm font-semibold text-white">FocusShift AI</h2>
+            <h2 className="text-sm font-semibold text-white">Offload AI</h2>
           </div>
           <button onClick={() => setOpen(false)} className="p-2 rounded-xl hover:bg-white/10 text-white/40" aria-label="Close chat">
             <X size={20} />

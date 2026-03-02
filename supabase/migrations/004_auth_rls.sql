@@ -1,4 +1,4 @@
--- FocusShift v2 — Auth + Row Level Security
+-- Offload v2 — Auth + Row Level Security
 -- Enables RLS on all user-facing tables and creates policies
 
 -- ─── Enable RLS ──────────────────────────────────────────────────

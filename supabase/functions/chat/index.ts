@@ -2,7 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 import { callClaude, extractJsonFromResponse } from '../_shared/claude.ts';
 
-const SYSTEM_PROMPT = `You are FocusShift AI, an ADHD-friendly life management assistant. You help manage a daily schedule, tasks, and goals.
+const SYSTEM_PROMPT = `You are Offload AI, an ADHD-friendly life management assistant. You help manage a daily schedule, tasks, and goals.
 
 COMMUNICATION STYLE:
 - Be warm, encouraging, and concise (ADHD-friendly)

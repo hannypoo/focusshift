@@ -41,7 +41,7 @@ export default function SignupView() {
         <div className="w-full max-w-sm text-center space-y-6">
           <div className="flex items-center justify-center gap-2 mb-2">
             <Zap size={32} className="text-indigo-400" />
-            <h1 className="text-3xl font-bold text-white">FocusShift</h1>
+            <h1 className="text-3xl font-bold text-white">Offload</h1>
           </div>
           <div className="bg-white/5 rounded-2xl p-6 space-y-4">
             <Mail size={48} className="text-green-400 mx-auto" />
@@ -66,7 +66,7 @@ export default function SignupView() {
         <div className="text-center">
           <div className="flex items-center justify-center gap-2 mb-2">
             <Zap size={32} className="text-indigo-400" />
-            <h1 className="text-3xl font-bold text-white">FocusShift</h1>
+            <h1 className="text-3xl font-bold text-white">Offload</h1>
           </div>
           <p className="text-white/40 text-sm">Create your account</p>
         </div>
