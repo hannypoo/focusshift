@@ -489,13 +489,12 @@ export function reshuffleRemainingBlocks(input: SchedulerInput & {
   existingBlocks: ScheduleBlock[];
 }): Omit<ScheduleBlock, 'id' | 'created_at' | 'updated_at'>[] {
   const {
-    profileId, profile, categories, tasks, recurringTasks, travelTimes,
-    locations, energyLevel, date, neglectScores, existingBlocks,
+    profileId, profile, categories, tasks,
+    energyLevel, date, neglectScores, existingBlocks,
   } = input;
 
   const wakeMin = parseTimeToMinutes(profile.default_wake_time.substring(0, 5));
   const windDownMin = parseTimeToMinutes(profile.default_wind_down_time.substring(0, 5));
-  const dow = new Date(date + 'T00:00:00').getDay();
   const bufferMin = getBufferMinutes(energyLevel);
 
   // Keep: completed, skipped, active, meals, self-care, fixed, protected buffers, travel tied to fixed
