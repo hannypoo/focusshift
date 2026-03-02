@@ -212,8 +212,9 @@ export function generateDaySchedule(input: SchedulerInput): Omit<ScheduleBlock, 
   }
 
   // ─── PHASE 3: BUFFER ──────────────────────────────────────────
-  // Insert 5-min breathing buffers between non-buffer blocks, then resolve overlaps
+  // Insert breathing buffers between non-buffer blocks (duration varies by energy)
 
+  const bufferMin = getBufferMinutes(energyLevel);
   blocks.sort((a, b) => a.startMin - b.startMin);
 
   const buffers: InternalBlock[] = [];
@@ -223,18 +224,17 @@ export function generateDaySchedule(input: SchedulerInput): Omit<ScheduleBlock, 
     // Don't add buffer between adjacent buffers/transitions or if already tight
     if (curr.isBuffer || next.isBuffer || curr.isTransition || next.isTransition) continue;
     const gap = next.startMin - curr.endMin;
-    if (gap >= 5) {
-      // There's room for a 5-min buffer
+    if (gap >= bufferMin) {
       buffers.push(makeBlock({
         title: 'Breather',
         startMin: curr.endMin,
-        endMin: curr.endMin + 5,
+        endMin: curr.endMin + bufferMin,
         blockType: 'buffer',
         isBuffer: true,
         isTransition: true,
         priority: 10,
       }));
-    } else if (gap > 0 && gap < 5) {
+    } else if (gap > 0 && gap < bufferMin) {
       // Tiny gap — use it as micro-buffer
       buffers.push(makeBlock({
         title: 'Breather',
@@ -297,7 +297,7 @@ export function generateDaySchedule(input: SchedulerInput): Omit<ScheduleBlock, 
           difficulty: 'easy',
           aiReason: 'Dead zone — recharge time',
         }));
-        cursor += relaxDuration + 5; // + breathing gap
+        cursor += relaxDuration + bufferMin; // + breathing gap
         continue;
       }
 
@@ -319,7 +319,7 @@ export function generateDaySchedule(input: SchedulerInput): Omit<ScheduleBlock, 
           // Skip easy tasks during peak if harder tasks available
           continue;
         }
-        if (zone === 'low' && taskDiff === 'hard') continue; // Skip hard during low zone
+        if (taskDiff === 'hard' && (zone === 'low' || energyLevel === 'low')) continue; // Skip hard during low zone or low energy
 
         const cat = categories.find((c) => c.id === ranked.task.category_id);
         blocks.push(makeBlock({
@@ -338,7 +338,7 @@ export function generateDaySchedule(input: SchedulerInput): Omit<ScheduleBlock, 
         taskUsed.add(ranked.task.id);
         const catId = ranked.task.category_id;
         if (catId) categoryBlockCount.set(catId, (categoryBlockCount.get(catId) || 0) + 1);
-        cursor += taskDuration + 5; // + breathing gap
+        cursor += taskDuration + bufferMin; // + breathing gap
         placed = true;
         break;
       }
@@ -372,12 +372,42 @@ export function generateDaySchedule(input: SchedulerInput): Omit<ScheduleBlock, 
           }));
 
           categoryBlockCount.set(category.id, count + 1);
-          cursor += blockDuration + 5;
+          cursor += blockDuration + bufferMin;
           categoryPlaced = true;
           break;
         }
 
         if (!categoryPlaced) break; // Nothing more to place in this slot
+      }
+    }
+  }
+
+  // ─── PHASE 4b: LOW-ENERGY SELF-CARE BREAKS ───────────────────
+  // On low energy days, insert a 15-min self-care break every 2 hours
+  if (energyLevel === 'low') {
+    blocks.sort((a, b) => a.startMin - b.startMin);
+    const taskBlocks = blocks.filter((b) => b.blockType === 'task' && !b.isSelfCare);
+    let lastBreakMin = wakeMin;
+    for (const tb of taskBlocks) {
+      if (tb.startMin - lastBreakMin >= 120) {
+        // Check there isn't already a self-care block nearby (within 15 min)
+        const nearby = blocks.some(
+          (b) => b.isSelfCare && Math.abs(b.startMin - tb.startMin) < 15
+        );
+        if (!nearby) {
+          blocks.push(makeBlock({
+            title: 'Energy Break',
+            startMin: tb.startMin,
+            endMin: tb.startMin + 15,
+            blockType: 'self_care',
+            isSelfCare: true,
+            priority: 80,
+            aiReason: 'Low energy — recharge every 2 hours',
+          }));
+          lastBreakMin = tb.startMin + 15;
+        } else {
+          lastBreakMin = tb.startMin;
+        }
       }
     }
   }
@@ -427,6 +457,284 @@ export function generateDaySchedule(input: SchedulerInput): Omit<ScheduleBlock, 
   resolved.sort((a, b) => a.startMin - b.startMin);
 
   return resolved.map((b) => ({
+    profile_id: profileId,
+    task_id: b.taskId ?? null,
+    category_id: b.categoryId ?? null,
+    title: b.title,
+    date,
+    start_time: minutesToTime(b.startMin),
+    end_time: minutesToTime(b.endMin),
+    duration_minutes: b.endMin - b.startMin,
+    status: 'pending' as const,
+    is_fixed: b.isFixed,
+    is_protected: b.isProtected,
+    is_transition: b.isTransition,
+    is_travel: b.isTravel,
+    is_prep: false,
+    block_type: b.blockType,
+    is_meal: b.isMeal,
+    is_self_care: b.isSelfCare,
+    is_buffer: b.isBuffer,
+    is_chore_block: b.isChoreBlock,
+    difficulty: b.difficulty ?? null,
+    ai_reason: b.aiReason ?? null,
+    notes: null,
+    completed_at: null,
+  }));
+}
+
+// ─── Reshuffle Remaining Blocks ──────────────────────────────────
+
+export function reshuffleRemainingBlocks(input: SchedulerInput & {
+  existingBlocks: ScheduleBlock[];
+}): Omit<ScheduleBlock, 'id' | 'created_at' | 'updated_at'>[] {
+  const {
+    profileId, profile, categories, tasks, recurringTasks, travelTimes,
+    locations, energyLevel, date, neglectScores, existingBlocks,
+  } = input;
+
+  const wakeMin = parseTimeToMinutes(profile.default_wake_time.substring(0, 5));
+  const windDownMin = parseTimeToMinutes(profile.default_wind_down_time.substring(0, 5));
+  const dow = new Date(date + 'T00:00:00').getDay();
+  const bufferMin = getBufferMinutes(energyLevel);
+
+  // Keep: completed, skipped, active, meals, self-care, fixed, protected buffers, travel tied to fixed
+  const keptBlocks: InternalBlock[] = existingBlocks
+    .filter((b) =>
+      b.status === 'completed' || b.status === 'skipped' ||
+      b.status === 'active' || b.is_meal || b.is_self_care ||
+      b.is_fixed || (b.is_buffer && b.is_protected)
+    )
+    .map((b) => ({
+      title: b.title,
+      startMin: parseTimeToMinutes(b.start_time.substring(0, 5)),
+      endMin: parseTimeToMinutes(b.end_time.substring(0, 5)),
+      blockType: b.block_type || 'task',
+      categoryId: b.category_id,
+      taskId: b.task_id,
+      locationId: null,
+      isFixed: b.is_fixed,
+      isProtected: b.is_protected,
+      isTransition: b.is_transition,
+      isTravel: b.is_travel,
+      isMeal: b.is_meal,
+      isSelfCare: b.is_self_care,
+      isBuffer: b.is_buffer,
+      isChoreBlock: b.is_chore_block,
+      difficulty: b.difficulty,
+      priority: b.is_fixed ? 90 : b.is_meal ? 95 : b.is_self_care ? 92 : 50,
+      aiReason: b.ai_reason,
+    }));
+
+  // Also keep travel blocks tied to kept fixed events
+  const keptFixedIds = new Set(keptBlocks.filter((b) => b.isFixed).map((b) => b.title));
+  for (const b of existingBlocks) {
+    if (b.is_travel && keptFixedIds.has(b.title.replace('Travel to ', ''))) {
+      keptBlocks.push({
+        title: b.title,
+        startMin: parseTimeToMinutes(b.start_time.substring(0, 5)),
+        endMin: parseTimeToMinutes(b.end_time.substring(0, 5)),
+        blockType: 'travel',
+        categoryId: null, taskId: null, locationId: null,
+        isFixed: false, isProtected: false, isTransition: false,
+        isTravel: true, isMeal: false, isSelfCare: false, isBuffer: false, isChoreBlock: false,
+        difficulty: null, priority: 85, aiReason: b.ai_reason,
+      });
+    }
+  }
+
+  // Find free slots around kept blocks
+  keptBlocks.sort((a, b) => a.startMin - b.startMin);
+  const freeSlots = findFreeSlots(wakeMin, windDownMin, keptBlocks);
+  const zones = profile.productivity_zones || [];
+
+  // Tasks already scheduled in kept blocks
+  const keptTaskIds = new Set(keptBlocks.filter((b) => b.taskId).map((b) => b.taskId));
+
+  const pendingTasks = tasks.filter((t) =>
+    t.status === 'pending' && !keptTaskIds.has(t.id) && (!t.scheduled_date || t.scheduled_date === date)
+  );
+
+  const rankedTasks = rankTasks(pendingTasks, categories, neglectScores || new Map(), energyLevel);
+  const rankedCategories = categories
+    .filter((c) => c.enabled && !c.isFixed)
+    .map((c) => {
+      const neglect = neglectScores?.get(c.id) || 0;
+      return { category: c, effectivePriority: c.priority + (neglect / 100) * 5, neglect };
+    })
+    .sort((a, b) => b.effectivePriority - a.effectivePriority);
+
+  const newBlocks: InternalBlock[] = [];
+  const taskUsed = new Set<string>();
+  const categoryBlockCount = new Map<string, number>();
+
+  // Count categories already used in kept blocks
+  for (const kb of keptBlocks) {
+    if (kb.categoryId) categoryBlockCount.set(kb.categoryId, (categoryBlockCount.get(kb.categoryId) || 0) + 1);
+  }
+
+  for (const slot of freeSlots) {
+    let cursor = slot.startMin;
+
+    while (cursor < slot.endMin) {
+      const zone = getZoneAt(cursor, zones);
+      const remaining = slot.endMin - cursor;
+      if (remaining < 10) break;
+
+      if (zone === 'dead') {
+        const relaxDuration = Math.min(remaining, 30);
+        newBlocks.push(makeBlock({
+          title: 'Relaxation',
+          startMin: cursor, endMin: cursor + relaxDuration,
+          blockType: 'task', isSelfCare: true, priority: 5, difficulty: 'easy',
+          aiReason: 'Dead zone — recharge time',
+        }));
+        cursor += relaxDuration + bufferMin;
+        continue;
+      }
+
+      let placed = false;
+
+      for (const ranked of rankedTasks) {
+        if (taskUsed.has(ranked.task.id)) continue;
+        const taskDuration = ranked.task.estimated_minutes || ranked.task.ai_estimated_minutes || 30;
+        if (taskDuration > remaining) continue;
+
+        const taskDiff = ranked.task.difficulty || 'medium';
+        if (taskDiff === 'hard' && (zone === 'low' || energyLevel === 'low')) continue;
+        if (zone === 'peak' && taskDiff === 'easy' && rankedTasks.some(
+          (r) => !taskUsed.has(r.task.id) && (r.task.difficulty === 'hard' || r.task.difficulty === 'medium')
+            && (r.task.estimated_minutes || 30) <= remaining
+        )) continue;
+
+        const cat = categories.find((c) => c.id === ranked.task.category_id);
+        newBlocks.push(makeBlock({
+          title: ranked.task.title,
+          startMin: cursor, endMin: cursor + taskDuration,
+          blockType: 'task', categoryId: ranked.task.category_id, taskId: ranked.task.id,
+          isProtected: cat?.isProtected ?? false, priority: ranked.score, difficulty: taskDiff,
+          aiReason: `Priority ${ranked.task.priority}, ${zone || 'normal'} zone`,
+        }));
+        taskUsed.add(ranked.task.id);
+        const catId = ranked.task.category_id;
+        if (catId) categoryBlockCount.set(catId, (categoryBlockCount.get(catId) || 0) + 1);
+        cursor += taskDuration + bufferMin;
+        placed = true;
+        break;
+      }
+
+      if (!placed) {
+        let categoryPlaced = false;
+        for (const { category } of rankedCategories) {
+          const count = categoryBlockCount.get(category.id) || 0;
+          const neglect = neglectScores?.get(category.id) || 0;
+          const maxBlocks = neglect > 60 ? 3 : 2;
+          if (count >= maxBlocks) continue;
+
+          const blockDuration = getBlockDuration(category, energyLevel);
+          if (blockDuration > remaining) continue;
+          if (zone === 'low' && category.priority > 7) continue;
+
+          newBlocks.push(makeBlock({
+            title: category.name,
+            startMin: cursor, endMin: cursor + blockDuration,
+            blockType: 'task', categoryId: category.id, isProtected: category.isProtected,
+            priority: category.priority,
+            difficulty: category.priority >= 8 ? 'hard' : category.priority >= 5 ? 'medium' : 'easy',
+            aiReason: `Category fill, ${zone || 'normal'} zone`,
+          }));
+          categoryBlockCount.set(category.id, count + 1);
+          cursor += blockDuration + bufferMin;
+          categoryPlaced = true;
+          break;
+        }
+        if (!categoryPlaced) break;
+      }
+    }
+  }
+
+  // Insert buffers between new blocks
+  newBlocks.sort((a, b) => a.startMin - b.startMin);
+  const newBuffers: InternalBlock[] = [];
+  for (let i = 0; i < newBlocks.length - 1; i++) {
+    const curr = newBlocks[i];
+    const next = newBlocks[i + 1];
+    if (curr.isBuffer || next.isBuffer) continue;
+    const gap = next.startMin - curr.endMin;
+    if (gap >= bufferMin) {
+      newBuffers.push(makeBlock({
+        title: 'Breather', startMin: curr.endMin, endMin: curr.endMin + bufferMin,
+        blockType: 'buffer', isBuffer: true, isTransition: true, priority: 10,
+      }));
+    } else if (gap > 0 && gap < bufferMin) {
+      newBuffers.push(makeBlock({
+        title: 'Breather', startMin: curr.endMin, endMin: curr.endMin + gap,
+        blockType: 'buffer', isBuffer: true, isTransition: true, priority: 10,
+      }));
+    }
+  }
+  newBlocks.push(...newBuffers);
+
+  // Low-energy self-care breaks every 2 hours
+  if (energyLevel === 'low') {
+    newBlocks.sort((a, b) => a.startMin - b.startMin);
+    const allBlocks = [...keptBlocks, ...newBlocks].sort((a, b) => a.startMin - b.startMin);
+    const taskBlocksAll = allBlocks.filter((b) => b.blockType === 'task' && !b.isSelfCare);
+    let lastBreakMin = wakeMin;
+    for (const tb of taskBlocksAll) {
+      if (tb.startMin - lastBreakMin >= 120) {
+        const nearby = allBlocks.some((b) => b.isSelfCare && Math.abs(b.startMin - tb.startMin) < 15);
+        if (!nearby) {
+          newBlocks.push(makeBlock({
+            title: 'Energy Break', startMin: tb.startMin, endMin: tb.startMin + 15,
+            blockType: 'self_care', isSelfCare: true, priority: 80,
+            aiReason: 'Low energy — recharge every 2 hours',
+          }));
+          lastBreakMin = tb.startMin + 15;
+        } else {
+          lastBreakMin = tb.startMin;
+        }
+      }
+    }
+  }
+
+  // Overlap resolution on combined kept + new
+  const combined = [...keptBlocks, ...newBlocks].sort(
+    (a, b) => a.startMin - b.startMin || b.priority - a.priority
+  );
+
+  const resolved: InternalBlock[] = [];
+  for (const block of combined) {
+    const overlap = resolved.find(
+      (r) => block.startMin < r.endMin && block.endMin > r.startMin
+    );
+    if (!overlap) { resolved.push(block); continue; }
+    if (block.isMeal || block.isSelfCare || block.isFixed || (block.isBuffer && block.priority >= 90)) {
+      if (block.priority > overlap.priority) {
+        overlap.startMin = block.endMin;
+        if (overlap.startMin >= overlap.endMin) {
+          const idx = resolved.indexOf(overlap);
+          if (idx >= 0) resolved.splice(idx, 1);
+        }
+        resolved.push(block);
+      }
+      continue;
+    }
+    const shiftedStart = overlap.endMin;
+    const duration = block.endMin - block.startMin;
+    if (shiftedStart + duration <= windDownMin) {
+      block.startMin = shiftedStart;
+      block.endMin = shiftedStart + duration;
+      resolved.push(block);
+    }
+  }
+
+  // Return only the NEW blocks (not from keptBlocks)
+  const keptSet = new Set(keptBlocks);
+  const finalNew = resolved.filter((b) => !keptSet.has(b));
+  finalNew.sort((a, b) => a.startMin - b.startMin);
+
+  return finalNew.map((b) => ({
     profile_id: profileId,
     task_id: b.taskId ?? null,
     category_id: b.categoryId ?? null,
@@ -594,10 +902,18 @@ function rankTasks(
         else if (daysUntilDue <= 3) score += 8;
       }
 
-      // Energy match bonus
+      // Energy-difficulty matching (strong impact for ADHD energy fluctuations)
       const diff = task.difficulty || 'medium';
-      if (energyLevel === 'high' && diff === 'hard') score += 5;
-      if (energyLevel === 'low' && diff === 'easy') score += 5;
+      if (energyLevel === 'high') {
+        if (diff === 'hard') score += 15;
+        if (diff === 'medium') score += 5;
+        if (diff === 'easy') score -= 5;
+      }
+      if (energyLevel === 'low') {
+        if (diff === 'easy') score += 15;
+        if (diff === 'medium') score += 5;
+        if (diff === 'hard') score -= 10;
+      }
 
       return { task, score };
     })
@@ -608,10 +924,18 @@ function getBlockDuration(category: Category, energyLevel: EnergyLevel): number 
   const base = category.defaultBlockMinutes;
   switch (energyLevel) {
     case 'low':
-      return Math.max(Math.round(base * 0.7), 15);
+      return Math.min(Math.max(Math.round(base * 0.6), 15), 45);
     case 'high':
-      return Math.round(base * 1.2);
+      return Math.min(Math.round(base * 1.4), 90);
     default:
       return base;
+  }
+}
+
+function getBufferMinutes(energyLevel: EnergyLevel): number {
+  switch (energyLevel) {
+    case 'low': return 8;
+    case 'high': return 3;
+    default: return 5;
   }
 }

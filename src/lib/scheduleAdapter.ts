@@ -11,7 +11,7 @@ import type {
   TravelTime,
   Location,
 } from '../types/database';
-import { generateDaySchedule } from './scheduler';
+import { generateDaySchedule, reshuffleRemainingBlocks } from './scheduler';
 
 /**
  * Build SchedulerInput from hook data and generate schedule blocks.
@@ -41,5 +41,37 @@ export function buildAndGenerateSchedule(opts: {
     energyLevel: opts.energyLevel,
     date: opts.date,
     neglectScores: opts.neglectScores,
+  });
+}
+
+/**
+ * Reshuffle only the remaining (unfinished) portion of the day with a new energy level.
+ * Keeps completed/skipped/active/anchored blocks intact.
+ */
+export function buildAndReshuffleSchedule(opts: {
+  profileId: string;
+  profile: Profile;
+  categories: Category[];
+  energyLevel: EnergyLevel;
+  date: string;
+  tasks?: Task[];
+  recurringTasks?: RecurringTask[];
+  travelTimes?: TravelTime[];
+  locations?: Location[];
+  neglectScores?: Map<string, number>;
+  existingBlocks: ScheduleBlock[];
+}): Omit<ScheduleBlock, 'id' | 'created_at' | 'updated_at'>[] {
+  return reshuffleRemainingBlocks({
+    profileId: opts.profileId,
+    profile: opts.profile,
+    categories: opts.categories,
+    tasks: opts.tasks ?? [],
+    recurringTasks: opts.recurringTasks ?? [],
+    travelTimes: opts.travelTimes ?? [],
+    locations: opts.locations ?? [],
+    energyLevel: opts.energyLevel,
+    date: opts.date,
+    neglectScores: opts.neglectScores,
+    existingBlocks: opts.existingBlocks,
   });
 }

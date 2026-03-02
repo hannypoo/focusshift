@@ -96,6 +96,28 @@ export function useUpdateBlock() {
   });
 }
 
+export function useDeleteBlocksByIds() {
+  const profileId = useProfileId();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { error } = await supabase
+        .from('schedule_blocks')
+        .delete()
+        .eq('profile_id', profileId)
+        .in('id', ids);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['schedule_blocks'] });
+      qc.invalidateQueries({ queryKey: ['schedule_blocks_range'] });
+    },
+    onError: () => {
+      toast.error('Failed to update schedule');
+    },
+  });
+}
+
 export function useDeleteBlocks() {
   const profileId = useProfileId();
   const qc = useQueryClient();
