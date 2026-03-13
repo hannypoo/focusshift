@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useProfileId } from './useProfileId';
 import { getDemoResponse } from '../lib/demoResponses';
 import { executeDemoActions } from '../lib/demoActions';
+import { executeAiActions } from '../lib/aiActions';
 import { restoreDemoSchedule } from '../lib/demoSchedule';
 import { getToday } from '../lib/utils';
 import type { ChatMessage, ScheduleBlock } from '../types/database';
@@ -73,6 +74,14 @@ export function useChat() {
 
         if (error) throw error;
         response = data as ChatResponse;
+
+        // Execute AI-generated actions (create blocks, etc.)
+        if (response.actions && response.actions.length > 0 && blocks) {
+          const executed = await executeAiActions(response.actions, blocks, profileId, getToday());
+          if (executed > 0) {
+            qc.invalidateQueries({ queryKey: ['schedule_blocks'] });
+          }
+        }
       }
 
       // Save assistant response to DB
