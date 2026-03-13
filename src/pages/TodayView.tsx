@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { Zap, Sun, Moon, Battery, RefreshCw, ClipboardList, RotateCcw, Brain, Sparkles, ChevronLeft } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { resetDemoState } from '../lib/demoReset';
 import { enrichBlocks } from '../lib/blockEnricher';
 import { toast } from 'sonner';
@@ -22,8 +23,6 @@ import { useRecordTaskHistory } from '../hooks/useTaskHistory';
 import { useTasks } from '../hooks/useTasks';
 import { useRewardEngine } from '../hooks/useRewardEngine';
 import { getToday } from '../lib/utils';
-import { useParams, useNavigate } from 'react-router-dom';
-import { parseISO, format as fmtDate } from 'date-fns';
 import type { EnergyLevel, TaskDifficulty } from '../types/database';
 
 export default function TodayView() {
@@ -207,7 +206,7 @@ export default function TodayView() {
             )}
             <div>
               <h1 className="text-xl font-bold text-white">
-                {isToday ? format(new Date(), 'EEEE, MMM d') : fmtDate(parseISO(today), 'EEEE, MMM d')}
+                {isToday ? format(new Date(), 'EEEE, MMM d') : format(parseISO(today), 'EEEE, MMM d')}
               </h1>
               <div className="flex items-center gap-2 mt-1">
                 {!isToday && (

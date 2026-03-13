@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, MapPin, Star, Calendar, ChevronRight as Go } from 'lucide-react';
+import { ChevronLeft, ChevronRight, MapPin, Star, Calendar } from 'lucide-react';
 import { useCategories } from '../hooks/useCategories';
 import { useScheduleBlocksRange } from '../hooks/useScheduleBlocks';
 import { getWeekDates, formatDayName, formatDayNumber, isDateToday } from '../lib/dateUtils';
@@ -150,7 +150,7 @@ export default function WeekView() {
                         {completed}/{total}
                       </p>
                     )}
-                    <Go size={16} className="text-white/15 group-hover:text-white/40 transition-colors" />
+                    <ChevronRight size={16} className="text-white/15 group-hover:text-white/40 transition-colors" />
                   </div>
                 </div>
               </button>
