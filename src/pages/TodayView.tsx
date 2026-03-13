@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { format } from 'date-fns';
-import { Zap, Sun, Moon, Battery, RefreshCw, ClipboardList, RotateCcw, Brain, Sparkles } from 'lucide-react';
+import { Zap, Sun, Moon, Battery, RefreshCw, ClipboardList, RotateCcw, Brain, Sparkles, ChevronLeft } from 'lucide-react';
 import { resetDemoState } from '../lib/demoReset';
 import { enrichBlocks } from '../lib/blockEnricher';
 import { toast } from 'sonner';
@@ -22,10 +22,15 @@ import { useRecordTaskHistory } from '../hooks/useTaskHistory';
 import { useTasks } from '../hooks/useTasks';
 import { useRewardEngine } from '../hooks/useRewardEngine';
 import { getToday } from '../lib/utils';
+import { useParams, useNavigate } from 'react-router-dom';
+import { parseISO, format as fmtDate } from 'date-fns';
 import type { EnergyLevel, TaskDifficulty } from '../types/database';
 
 export default function TodayView() {
-  const today = getToday();
+  const { date: dateParam } = useParams<{ date?: string }>();
+  const navigate = useNavigate();
+  const today = dateParam || getToday();
+  const isToday = today === getToday();
   const profileId = useProfileId();
   const { data: profile } = useProfile();
   const { data: categories } = useCategories();
@@ -190,20 +195,34 @@ export default function TodayView() {
       {/* Header */}
       <div className="px-4 pt-4 pb-2 space-y-2">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-white">
-              {format(new Date(), 'EEEE, MMM d')}
-            </h1>
-            <div className="flex items-center gap-2 mt-1">
-              {checkin && (
-                <span className="flex items-center gap-1 text-xs text-white/40">
-                  <EnergyIcon level={checkin.energy_level} />
-                  {checkin.energy_level} energy
-                </span>
-              )}
-              {todayStats.rewardsEarned > 0 && (
-                <span className="text-xs text-indigo-400">{todayStats.rewardsEarned} rewards</span>
-              )}
+          <div className="flex items-center gap-2">
+            {!isToday && (
+              <button
+                onClick={() => navigate('/week')}
+                className="p-1.5 rounded-lg hover:bg-white/10 text-white/40 hover:text-white transition-colors"
+                aria-label="Back to week"
+              >
+                <ChevronLeft size={20} />
+              </button>
+            )}
+            <div>
+              <h1 className="text-xl font-bold text-white">
+                {isToday ? format(new Date(), 'EEEE, MMM d') : fmtDate(parseISO(today), 'EEEE, MMM d')}
+              </h1>
+              <div className="flex items-center gap-2 mt-1">
+                {!isToday && (
+                  <span className="text-xs text-indigo-400/70">Viewing future day</span>
+                )}
+                {checkin && isToday && (
+                  <span className="flex items-center gap-1 text-xs text-white/40">
+                    <EnergyIcon level={checkin.energy_level} />
+                    {checkin.energy_level} energy
+                  </span>
+                )}
+                {todayStats.rewardsEarned > 0 && isToday && (
+                  <span className="text-xs text-indigo-400">{todayStats.rewardsEarned} rewards</span>
+                )}
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-2">

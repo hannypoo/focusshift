@@ -71,6 +71,7 @@ export default function App() {
               <AppShell>
                 <Routes>
                   <Route path="/" element={<TodayView />} />
+                  <Route path="/day/:date" element={<TodayView />} />
                   <Route path="/week" element={<WeekView />} />
                   <Route path="/month" element={<MonthView />} />
                   <Route path="/tasks" element={<TasksView />} />
