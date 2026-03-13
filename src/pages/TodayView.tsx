@@ -52,7 +52,7 @@ export default function TodayView() {
   const [showSummary, setShowSummary] = useState(false);
   const [showEnergyModal, setShowEnergyModal] = useState(false);
   const [showCoaching, setShowCoaching] = useState(false);
-  const { nudges, fetchNudges, getNextNudge } = useNudges();
+  const { nudges, isLoading: nudgesLoading, fetchNudges, getNextNudge } = useNudges();
   const [dismissedNudges, setDismissedNudges] = useState<Set<string>>(new Set());
 
   const hasBlocks = enrichedBlocks.length > 0;
@@ -267,10 +267,20 @@ export default function TodayView() {
             return (
               <button
                 onClick={fetchNudges}
-                className="mx-2 mb-3 w-[calc(100%-16px)] py-2.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/15 border border-indigo-500/20 text-indigo-400 text-xs font-medium transition-colors flex items-center justify-center gap-2"
+                disabled={nudgesLoading}
+                className="mx-2 mb-3 w-[calc(100%-16px)] py-2.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/15 border border-indigo-500/20 text-indigo-400 text-xs font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
               >
-                <Sparkles size={14} />
-                Get AI nudges for today
+                {nudgesLoading ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-indigo-400/30 border-t-indigo-400 rounded-full animate-spin" />
+                    Generating nudges...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles size={14} />
+                    Get AI nudges for today
+                  </>
+                )}
               </button>
             );
           }

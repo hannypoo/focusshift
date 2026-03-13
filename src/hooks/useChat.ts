@@ -80,6 +80,7 @@ export function useChat() {
           const executed = await executeAiActions(response.actions, blocks, profileId, getToday());
           if (executed > 0) {
             qc.invalidateQueries({ queryKey: ['schedule_blocks'] });
+            qc.invalidateQueries({ queryKey: ['schedule_blocks_range'] });
           }
         }
       }
