@@ -4,20 +4,22 @@ import { useProfileId } from './useProfileId';
 import type { RecurringTask } from '../types/database';
 import { toast } from 'sonner';
 
-export function useRecurringTasks() {
+export function useRecurringTasks(enabledOnly = true) {
   const profileId = useProfileId();
   return useQuery({
-    queryKey: ['recurring_tasks', profileId],
+    queryKey: ['recurring_tasks', profileId, enabledOnly],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('recurring_tasks')
         .select('*')
         .eq('profile_id', profileId)
-        .eq('enabled', true)
         .order('created_at');
+      if (enabledOnly) query = query.eq('enabled', true);
+      const { data, error } = await query;
       if (error) throw error;
       return data as RecurringTask[];
     },
+    enabled: !!profileId,
   });
 }
 
@@ -26,6 +28,7 @@ export function useCreateRecurringTask() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (task: Omit<RecurringTask, 'id' | 'created_at'>) => {
+      if (!profileId) return;
       const { data, error } = await supabase
         .from('recurring_tasks')
         .insert({ ...task, profile_id: profileId })
@@ -40,6 +43,54 @@ export function useCreateRecurringTask() {
     },
     onError: () => {
       toast.error('Failed to create recurring task');
+    },
+  });
+}
+
+export function useUpdateRecurringTask() {
+  const profileId = useProfileId();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: { id: string } & Partial<RecurringTask>) => {
+      if (!profileId) return;
+      const { data, error } = await supabase
+        .from('recurring_tasks')
+        .update(updates)
+        .eq('id', id)
+        .eq('profile_id', profileId)
+        .select()
+        .single();
+      if (error) throw error;
+      return data as RecurringTask;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['recurring_tasks'] });
+    },
+    onError: () => {
+      toast.error('Failed to update recurring task');
+    },
+  });
+}
+
+export function useDeleteRecurringTask() {
+  const profileId = useProfileId();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      if (!profileId) return;
+      const { error } = await supabase
+        .from('recurring_tasks')
+        .delete()
+        .eq('id', id)
+        .eq('profile_id', profileId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['recurring_tasks'] });
+      toast.success('Recurring task deleted');
+    },
+    onError: () => {
+      toast.error('Failed to delete recurring task');
     },
   });
 }
@@ -79,10 +130,10 @@ export async function spawnRecurringInstances(
       due_date: date,
       due_time: null,
       scheduled_date: date,
-      scheduled_start_time: rt.start_time,
-      scheduled_end_time: rt.end_time,
+      scheduled_start_time: rt.is_flexible ? null : rt.start_time,
+      scheduled_end_time: rt.is_flexible ? null : rt.end_time,
       location_id: rt.location_id,
-      needs_travel: false,
+      needs_travel: !!rt.location_id,
       prep_minutes: 0,
       homework_type: null,
       course_name: null,

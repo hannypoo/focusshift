@@ -1,11 +1,10 @@
 import { useAuth } from '../context/AuthContext';
 
 /**
- * Returns the current user's profile ID.
- * Falls back to hardcoded ID when auth is not yet configured.
+ * Returns the current user's profile ID, or null if not yet loaded.
+ * Hooks that use this should set `enabled: !!profileId` on their queries.
  */
-export function useProfileId(): string {
+export function useProfileId(): string | null {
   const { profileId } = useAuth();
-  // Fallback to hardcoded single-user ID if auth hasn't set profileId yet
-  return profileId || '00000000-0000-0000-0000-000000000001';
+  return profileId;
 }

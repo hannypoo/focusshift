@@ -19,11 +19,19 @@ export default function TasksView() {
   const [showAdd, setShowAdd] = useState(false);
   const [showHomework, setShowHomework] = useState(false);
   const [showAppointment, setShowAppointment] = useState(false);
-  const { data: tasks } = useTasks({ status: ['pending', 'scheduled', 'in_progress'] });
+  const { data: tasks, isLoading: tasksLoading } = useTasks({ status: ['pending', 'scheduled', 'in_progress'] });
   const { data: completedTasks } = useTasks({ status: ['completed'] });
-  const { data: categories } = useCategories();
+  const { data: categories, isLoading: catsLoading } = useCategories();
   const updateTask = useUpdateTask();
   const deleteTask = useDeleteTask();
+
+  if (tasksLoading || catsLoading) {
+    return (
+      <div className="flex-1 flex items-center justify-center py-20">
+        <div className="w-8 h-8 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   // Group by priority
   const grouped = useMemo(() => {

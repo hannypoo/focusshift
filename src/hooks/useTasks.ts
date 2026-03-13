@@ -33,6 +33,7 @@ export function useTasks(filters?: {
       if (error) throw error;
       return data as Task[];
     },
+    enabled: !!profileId,
   });
 }
 
@@ -41,6 +42,7 @@ export function useCreateTask() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (task: Omit<Task, 'id' | 'created_at' | 'updated_at'>) => {
+      if (!profileId) return;
       const { data, error } = await supabase
         .from('tasks')
         .insert({ ...task, profile_id: profileId })
@@ -64,6 +66,7 @@ export function useUpdateTask() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, ...updates }: { id: string } & Partial<Task>) => {
+      if (!profileId) return;
       const { data, error } = await supabase
         .from('tasks')
         .update(updates)
@@ -88,6 +91,7 @@ export function useDeleteTask() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
+      if (!profileId) return;
       const { error } = await supabase
         .from('tasks')
         .delete()

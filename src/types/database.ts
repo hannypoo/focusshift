@@ -107,6 +107,10 @@ export interface RecurringTask {
   start_time: string | null;
   end_time: string | null;
   enabled: boolean;
+  not_before: string | null;
+  not_after: string | null;
+  is_flexible: boolean;
+  notes: string | null;
   created_at: string;
 }
 

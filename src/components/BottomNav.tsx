@@ -1,6 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
-import { CalendarDays, CalendarRange, CalendarCheck, ListTodo, MoreHorizontal, User, Settings } from 'lucide-react';
+import { CalendarDays, CalendarRange, CalendarCheck, ListTodo, MoreHorizontal, User, Settings, Repeat } from 'lucide-react';
 
 const NAV_ITEMS = [
   { path: '/', label: 'Today', icon: CalendarDays },
@@ -10,6 +10,7 @@ const NAV_ITEMS = [
 ] as const;
 
 const MORE_ITEMS = [
+  { path: '/schedule', label: 'Weekly Schedule', icon: Repeat },
   { path: '/profile', label: 'Profile', icon: User },
   { path: '/settings', label: 'Settings', icon: Settings },
 ] as const;
@@ -34,7 +35,7 @@ export default function BottomNav() {
       {/* More sheet */}
       {moreOpen && (
         <div className="fixed bottom-[72px] left-0 right-0 z-50 px-4 pb-2 animate-fade-in-up">
-          <div className="bg-slate-800 rounded-2xl border border-white/10 overflow-hidden">
+          <div className="bg-slate-900/95 backdrop-blur-lg rounded-2xl border border-white/10 overflow-hidden">
             {MORE_ITEMS.map((item) => {
               const Icon = item.icon;
               const active = location.pathname === item.path;

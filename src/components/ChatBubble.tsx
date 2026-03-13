@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
-import { Send, X, Bot, User, MessageCircle } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { Send, X, Bot, User, MessageCircle, Mic } from 'lucide-react';
 import { useChat, useChatHistory } from '../hooks/useChat';
 import { useScheduleBlocks } from '../hooks/useScheduleBlocks';
 import { useCategories } from '../hooks/useCategories';
@@ -8,6 +8,7 @@ import { useProfile } from '../hooks/useProfile';
 import { useRewards } from '../hooks/useRewards';
 import { getToday } from '../lib/utils';
 import SuggestionChips from './SuggestionChips';
+import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 import type { Suggestion } from '../types';
 
 export default function ChatBubble() {
@@ -21,6 +22,13 @@ export default function ChatBubble() {
   const { data: profile } = useProfile();
   const { data: rewards } = useRewards(getToday());
   const scrollRef = useRef<HTMLDivElement>(null);
+  const handleSendRef = useRef<(msg?: string) => void>(() => {});
+
+  // Voice input — auto-send when speech finishes
+  const handleVoiceResult = useCallback((transcript: string) => {
+    handleSendRef.current(transcript);
+  }, []);
+  const { listening, wakeListening, wakeWordEnabled, interim, supported: micSupported, toggle: toggleMic, toggleWakeWord } = useSpeechRecognition(handleVoiceResult);
 
   useEffect(() => {
     if (open && scrollRef.current) {
@@ -48,8 +56,11 @@ export default function ChatBubble() {
       streak: profile?.streak || 0,
     };
     const history = (chatHistory || []).slice(-6).map((m) => ({ role: m.role, content: m.content }));
-    await sendMessage(text, context, history);
+    await sendMessage(text, context, history, blocks || []);
   };
+
+  // Keep ref in sync for voice callback
+  handleSendRef.current = handleSend;
 
   const handleSuggestion = (suggestion: Suggestion) => {
     if (suggestion.action.type === 'send_message') {
@@ -79,11 +90,34 @@ export default function ChatBubble() {
         <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
           <div className="flex items-center gap-2">
             <Bot size={20} className="text-indigo-400" />
-            <h2 className="text-sm font-semibold text-white">Offload AI</h2>
+            <h2 className="text-sm font-semibold text-white">Nudgley</h2>
+            {wakeListening && (
+              <span className="flex items-center gap-1 text-[10px] text-emerald-400/70">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                listening
+              </span>
+            )}
           </div>
-          <button onClick={() => setOpen(false)} className="p-2 rounded-xl hover:bg-white/10 text-white/40" aria-label="Close chat">
-            <X size={20} />
-          </button>
+          <div className="flex items-center gap-1">
+            {micSupported && (
+              <button
+                onClick={toggleWakeWord}
+                className={`px-2.5 py-1 rounded-lg text-[10px] font-medium transition-all ${
+                  wakeWordEnabled
+                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                    : 'bg-white/5 text-white/30 hover:text-white/50 border border-white/5'
+                }`}
+                aria-label={wakeWordEnabled ? 'Disable voice activation' : 'Enable voice activation'}
+                title={wakeWordEnabled ? '"Hey Nudgley" is on' : 'Enable "Hey Nudgley"'}
+              >
+                <Mic size={10} className="inline mr-1" />
+                {wakeWordEnabled ? 'Voice On' : 'Voice'}
+              </button>
+            )}
+            <button onClick={() => setOpen(false)} className="p-2 rounded-xl hover:bg-white/10 text-white/40" aria-label="Close chat">
+              <X size={20} />
+            </button>
+          </div>
         </div>
 
         {/* Messages */}
@@ -91,8 +125,8 @@ export default function ChatBubble() {
           {(!chatHistory || chatHistory.length === 0) && (
             <div className="text-center py-8">
               <Bot size={40} className="text-white/10 mx-auto mb-3" />
-              <p className="text-white/30 text-sm">Hey! I'm your schedule assistant.</p>
-              <p className="text-white/20 text-xs mt-1">Ask me anything about your day.</p>
+              <p className="text-white/30 text-sm">Hey! I'm Nudgley, your schedule sidekick.</p>
+              <p className="text-white/20 text-xs mt-1">Type, tap the mic, or say "Hey Nudgley" to get started.</p>
             </div>
           )}
 
@@ -122,10 +156,10 @@ export default function ChatBubble() {
                 <Bot size={12} className="text-indigo-400" />
               </div>
               <div className="bg-white/5 rounded-2xl px-3 py-2.5 border border-white/5">
-                <div className="flex gap-1">
-                  <div className="w-1.5 h-1.5 rounded-full bg-white/20 animate-pulse" />
-                  <div className="w-1.5 h-1.5 rounded-full bg-white/20 animate-pulse" style={{ animationDelay: '0.2s' }} />
-                  <div className="w-1.5 h-1.5 rounded-full bg-white/20 animate-pulse" style={{ animationDelay: '0.4s' }} />
+                <div className="flex gap-1.5 py-1">
+                  <div className="w-2 h-2 rounded-full bg-indigo-400/40 animate-pulse" />
+                  <div className="w-2 h-2 rounded-full bg-indigo-400/40 animate-pulse" style={{ animationDelay: '0.2s' }} />
+                  <div className="w-2 h-2 rounded-full bg-indigo-400/40 animate-pulse" style={{ animationDelay: '0.4s' }} />
                 </div>
               </div>
             </div>
@@ -139,17 +173,34 @@ export default function ChatBubble() {
           <div className="flex items-center gap-2">
             <input
               type="text"
-              value={input}
+              value={listening ? (interim || 'Listening...') : input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-              placeholder="Type a message..."
-              className="flex-1 h-10 bg-white/5 rounded-xl px-3 text-sm text-white placeholder:text-white/20 border border-white/5 focus:border-indigo-500/40 outline-none"
+              placeholder={listening ? 'Listening...' : 'Type or tap mic...'}
+              className={`flex-1 h-10 bg-white/5 rounded-xl px-3 text-sm text-white placeholder:text-white/20 border outline-none transition-colors ${
+                listening ? 'border-red-500/40 bg-red-500/5' : 'border-white/5 focus:border-indigo-500/40'
+              }`}
+              readOnly={listening}
               autoFocus
             />
+            {micSupported && (
+              <button
+                onClick={toggleMic}
+                disabled={isLoading}
+                className={`h-10 w-10 flex items-center justify-center rounded-xl transition-all ${
+                  listening
+                    ? 'bg-red-500 hover:bg-red-400 text-white animate-pulse'
+                    : 'bg-white/5 hover:bg-white/10 text-white/40 hover:text-white/70'
+                }`}
+                aria-label={listening ? 'Stop listening' : 'Voice input'}
+              >
+                <Mic size={16} />
+              </button>
+            )}
             <button
               onClick={() => handleSend()}
-              disabled={!input.trim() || isLoading}
-              className="h-10 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 text-white transition-colors"
+              disabled={(!input.trim() && !listening) || isLoading}
+              className="h-10 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-colors"
               aria-label="Send"
             >
               <Send size={16} />

@@ -1,11 +1,12 @@
-import { useState, useRef, useEffect } from 'react';
-import { Send, X, ChevronUp, Bot, User } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { Send, X, ChevronUp, Bot, User, Mic } from 'lucide-react';
 import { useChat, useChatHistory } from '../hooks/useChat';
 import { useScheduleBlocks } from '../hooks/useScheduleBlocks';
 import { useCategories } from '../hooks/useCategories';
 import { useGoals } from '../hooks/useGoals';
 import { getToday } from '../lib/utils';
 import SuggestionChips from './SuggestionChips';
+import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 import type { Suggestion } from '../types';
 
 interface ChatSheetProps {
@@ -21,6 +22,13 @@ export default function ChatSheet({ expanded, onToggle }: ChatSheetProps) {
   const { data: categories } = useCategories();
   const { data: goals } = useGoals();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const handleSendRef = useRef<(msg?: string) => void>(() => {});
+
+  // Voice input — auto-send when speech finishes
+  const handleVoiceResult = useCallback((transcript: string) => {
+    handleSendRef.current(transcript);
+  }, []);
+  const { listening, interim, supported: micSupported, toggle: toggleMic } = useSpeechRecognition(handleVoiceResult);
 
   // Scroll to bottom when new messages appear
   useEffect(() => {
@@ -53,8 +61,10 @@ export default function ChatSheet({ expanded, onToggle }: ChatSheetProps) {
       content: m.content,
     }));
 
-    await sendMessage(text, context, history);
+    await sendMessage(text, context, history, blocks || []);
   };
+
+  handleSendRef.current = handleSend;
 
   const handleSuggestion = (suggestion: Suggestion) => {
     if (suggestion.action.type === 'send_message') {
@@ -76,15 +86,32 @@ export default function ChatSheet({ expanded, onToggle }: ChatSheetProps) {
           </button>
           <input
             type="text"
-            value={input}
+            value={listening ? (interim || 'Listening...') : input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            placeholder="Ask Offload AI..."
-            className="flex-1 h-10 bg-white/5 rounded-xl px-3 text-sm text-white placeholder:text-white/20 border border-white/5 outline-none"
+            placeholder={listening ? 'Listening...' : 'Ask Nudgley...'}
+            className={`flex-1 h-10 bg-white/5 rounded-xl px-3 text-sm text-white placeholder:text-white/20 border outline-none transition-colors ${
+              listening ? 'border-red-500/40 bg-red-500/5' : 'border-white/5'
+            }`}
+            readOnly={listening}
           />
+          {micSupported && (
+            <button
+              onClick={toggleMic}
+              disabled={isLoading}
+              className={`p-2 rounded-xl transition-all ${
+                listening
+                  ? 'bg-red-500 hover:bg-red-400 text-white animate-pulse'
+                  : 'bg-white/5 hover:bg-white/10 text-white/40 hover:text-white/70'
+              }`}
+              aria-label={listening ? 'Stop listening' : 'Voice input'}
+            >
+              <Mic size={18} />
+            </button>
+          )}
           <button
             onClick={() => handleSend()}
-            disabled={!input.trim() || isLoading}
+            disabled={(!input.trim() && !listening) || isLoading}
             className="p-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 text-white transition-colors"
             aria-label="Send"
           >
@@ -174,16 +201,33 @@ export default function ChatSheet({ expanded, onToggle }: ChatSheetProps) {
         <div className="flex items-center gap-2 max-w-md mx-auto">
           <input
             type="text"
-            value={input}
+            value={listening ? (interim || 'Listening...') : input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            placeholder="Type a message..."
-            className="flex-1 h-12 bg-white/5 rounded-2xl px-4 text-sm text-white placeholder:text-white/20 border border-white/5 focus:border-indigo-500/40 outline-none"
+            placeholder={listening ? 'Listening...' : 'Type or tap mic...'}
+            className={`flex-1 h-12 bg-white/5 rounded-2xl px-4 text-sm text-white placeholder:text-white/20 border outline-none transition-colors ${
+              listening ? 'border-red-500/40 bg-red-500/5' : 'border-white/5 focus:border-indigo-500/40'
+            }`}
+            readOnly={listening}
             autoFocus
           />
+          {micSupported && (
+            <button
+              onClick={toggleMic}
+              disabled={isLoading}
+              className={`h-12 w-12 flex items-center justify-center rounded-2xl transition-all ${
+                listening
+                  ? 'bg-red-500 hover:bg-red-400 text-white animate-pulse'
+                  : 'bg-white/5 hover:bg-white/10 text-white/40 hover:text-white/70'
+              }`}
+              aria-label={listening ? 'Stop listening' : 'Voice input'}
+            >
+              <Mic size={18} />
+            </button>
+          )}
           <button
             onClick={() => handleSend()}
-            disabled={!input.trim() || isLoading}
+            disabled={(!input.trim() && !listening) || isLoading}
             className="h-12 px-5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 text-white font-medium text-sm transition-colors"
             aria-label="Send"
           >

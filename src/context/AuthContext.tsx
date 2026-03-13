@@ -38,7 +38,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        loadOrCreateProfile(session.user.id);
+        const name = session.user.user_metadata?.display_name;
+        loadOrCreateProfile(session.user.id, name);
       } else {
         setProfileId(null);
         setLoading(false);
@@ -48,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  async function loadOrCreateProfile(userId: string) {
+  async function loadOrCreateProfile(userId: string, displayName?: string) {
     // Check if profile exists for this auth user
     const { data: profile } = await supabase
       .from('profiles')
@@ -59,10 +60,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (profile) {
       setProfileId(profile.id);
     } else {
-      // Create profile for new user
+      // Create profile for new user — use display name from metadata if available
+      const name = displayName || 'User';
       const { data: newProfile, error } = await supabase
         .from('profiles')
-        .insert({ id: userId, display_name: 'User' })
+        .insert({ id: userId, display_name: name })
         .select('id')
         .single();
 
@@ -79,17 +81,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signUp = async (email: string, password: string, displayName: string) => {
-    const { data, error } = await supabase.auth.signUp({ email, password });
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { display_name: displayName } },
+    });
     if (error) return { error: new Error(error.message) };
-
-    // Create profile with display name
-    if (data.user) {
-      await supabase.from('profiles').insert({
-        id: data.user.id,
-        display_name: displayName,
-      });
-    }
-
+    // Profile creation is handled by loadOrCreateProfile via onAuthStateChange
     return { error: null };
   };
 

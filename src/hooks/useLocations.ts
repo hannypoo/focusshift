@@ -17,6 +17,7 @@ export function useLocations() {
       if (error) throw error;
       return data as Location[];
     },
+    enabled: !!profileId,
   });
 }
 
@@ -25,6 +26,7 @@ export function useCreateLocation() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (loc: { name: string; address?: string; is_home?: boolean }) => {
+      if (!profileId) return;
       const { data, error } = await supabase
         .from('locations')
         .insert({ ...loc, profile_id: profileId })
@@ -48,6 +50,7 @@ export function useDeleteLocation() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
+      if (!profileId) return;
       const { error } = await supabase
         .from('locations')
         .delete()

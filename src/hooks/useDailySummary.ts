@@ -8,7 +8,7 @@ export function useDailySummary(date?: string) {
   const profileId = useProfileId();
   return useQuery({
     queryKey: ['daily_summary', date, profileId],
-    enabled: !!date,
+    enabled: !!date && !!profileId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('daily_summaries')
@@ -37,6 +37,7 @@ export function useUpsertDailySummary() {
       mood_rating?: number;
       user_notes?: string;
     }) => {
+      if (!profileId) return;
       const { data, error } = await supabase
         .from('daily_summaries')
         .upsert(
@@ -75,5 +76,6 @@ export function useRecentSummaries(days: number = 7) {
       if (error) throw error;
       return data as DailySummary[];
     },
+    enabled: !!profileId,
   });
 }

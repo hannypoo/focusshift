@@ -17,6 +17,7 @@ export function useProfile() {
       if (error) throw error;
       return data as Profile;
     },
+    enabled: !!profileId,
   });
 }
 
@@ -25,6 +26,7 @@ export function useUpdateProfile() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (updates: Partial<Profile>) => {
+      if (!profileId) return;
       const { data, error } = await supabase
         .from('profiles')
         .update(updates)

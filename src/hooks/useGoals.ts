@@ -21,6 +21,7 @@ export function useGoals(weekStart?: string) {
       if (error) throw error;
       return data as Goal[];
     },
+    enabled: !!profileId,
   });
 }
 
@@ -29,6 +30,7 @@ export function useCreateGoal() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (goal: Omit<Goal, 'id' | 'created_at'>) => {
+      if (!profileId) return;
       const { data, error } = await supabase
         .from('goals')
         .insert({ ...goal, profile_id: profileId })
@@ -52,6 +54,7 @@ export function useUpdateGoal() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, ...updates }: { id: string } & Partial<Goal>) => {
+      if (!profileId) return;
       const { error } = await supabase
         .from('goals')
         .update(updates)

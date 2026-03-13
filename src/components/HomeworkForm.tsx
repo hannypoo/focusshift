@@ -43,7 +43,7 @@ export default function HomeworkForm({ onClose }: HomeworkFormProps) {
   };
 
   const handleAddSessions = async () => {
-    if (!estimate) return;
+    if (!estimate || !profileId) return;
 
     for (const session of estimate.sessions) {
       await createTask.mutateAsync({

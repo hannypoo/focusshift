@@ -18,9 +18,9 @@ export default function MonthView() {
   const firstDate = cells.find((c) => c !== null) || '';
   const lastDate = [...cells].reverse().find((c) => c !== null) || '';
 
-  const { data: blocks } = useScheduleBlocksRange(firstDate, lastDate);
+  const { data: blocks, isLoading: blocksLoading } = useScheduleBlocksRange(firstDate, lastDate);
   const { data: tasks } = useTasks({ dueBefore: lastDate });
-  const { data: categories } = useCategories();
+  const { data: categories, isLoading: catsLoading } = useCategories();
 
   // Blocks per day (just counts by category)
   const dayData = useMemo(() => {
@@ -48,6 +48,14 @@ export default function MonthView() {
     }
     return set;
   }, [tasks]);
+
+  if (blocksLoading || catsLoading) {
+    return (
+      <div className="flex-1 flex items-center justify-center py-20">
+        <div className="w-8 h-8 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full">

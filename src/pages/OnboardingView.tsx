@@ -10,6 +10,8 @@ import { useCreateGoal } from '../hooks/useGoals';
 import { useCreateRecurringTask } from '../hooks/useRecurringTasks';
 import { useProfileId } from '../hooks/useProfileId';
 import { getWeekStart } from '../lib/dateUtils';
+import { supabase } from '../lib/supabase';
+import { DEFAULT_CATEGORIES } from '../data/categories';
 import { toast } from 'sonner';
 import TreatsQuiz from '../components/TreatsQuiz';
 import ProductivityZoneSetup from '../components/ProductivityZoneSetup';
@@ -106,6 +108,7 @@ export default function OnboardingView({ onComplete }: OnboardingViewProps) {
     setMeals((prev) => ({ ...prev, [meal]: { ...prev[meal], time } }));
 
   const handleFinish = async () => {
+    if (!profileId) return;
     // Save profile with all v2 fields
     await updateProfile.mutateAsync({
       display_name: name.trim() || 'User',
@@ -119,6 +122,22 @@ export default function OnboardingView({ onComplete }: OnboardingViewProps) {
       treats,
       onboarding_version: 2,
     });
+
+    // Seed default categories for new user
+    const categoryRows = DEFAULT_CATEGORIES.map((cat) => ({
+      id: cat.id,
+      profile_id: profileId,
+      name: cat.name,
+      icon: cat.icon,
+      color: cat.color,
+      priority: cat.priority,
+      default_block_minutes: cat.defaultBlockMinutes,
+      weekly_min_minutes: cat.weeklyMinMinutes,
+      is_protected: cat.isProtected,
+      is_fixed: cat.isFixed,
+      enabled: cat.enabled,
+    }));
+    await supabase.from('categories').upsert(categoryRows, { onConflict: 'id' });
 
     // Save locations
     for (const loc of selectedLocations) {

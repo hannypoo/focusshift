@@ -66,6 +66,7 @@ export default function TaskGroupAdd({ onClose }: TaskGroupAddProps) {
       toast.error('Give it a name first');
       return;
     }
+    if (!profileId) return;
 
     await createTask.mutateAsync({
       profile_id: profileId,

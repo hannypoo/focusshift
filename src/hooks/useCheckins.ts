@@ -21,6 +21,7 @@ export function useDailyCheckin(date?: string) {
       if (error) throw error;
       return data as DailyCheckin | null;
     },
+    enabled: !!profileId,
   });
 }
 
@@ -35,6 +36,7 @@ export function useUpsertDailyCheckin() {
       wind_down_time?: string;
       notes?: string;
     }) => {
+      if (!profileId) return;
       const { data, error } = await supabase
         .from('daily_checkins')
         .upsert(
@@ -67,6 +69,7 @@ export function useWeeklyCheckin(weekStart?: string) {
       if (error) throw error;
       return data as WeeklyCheckin | null;
     },
+    enabled: !!profileId,
   });
 }
 
@@ -75,6 +78,7 @@ export function useUpsertWeeklyCheckin() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (checkin: Omit<WeeklyCheckin, 'id' | 'created_at' | 'profile_id'>) => {
+      if (!profileId) return;
       const { data, error } = await supabase
         .from('weekly_checkins')
         .upsert(

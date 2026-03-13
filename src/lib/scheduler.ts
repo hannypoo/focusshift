@@ -80,7 +80,12 @@ export function generateDaySchedule(input: SchedulerInput): Omit<ScheduleBlock, 
 
   // Fixed recurring events for today's day of week
   const todayRecurring = recurringTasks.filter((r) =>
-    r.enabled && r.start_time && r.end_time && r.days_of_week?.includes(dow)
+    r.enabled && !r.is_flexible && r.start_time && r.end_time && r.days_of_week?.includes(dow)
+  );
+
+  // Flexible recurring events (placed during Phase 4)
+  const flexibleRecurring = recurringTasks.filter((r) =>
+    r.enabled && r.is_flexible && r.days_of_week?.includes(dow)
   );
 
   for (const event of todayRecurring) {
@@ -101,8 +106,12 @@ export function generateDaySchedule(input: SchedulerInput): Omit<ScheduleBlock, 
   }
 
   // Meals
-  const meals = profile.meal_times;
-  if (meals.breakfast.enabled) {
+  const meals = profile.meal_times || {
+    breakfast: { time: '08:00', enabled: true },
+    lunch: { time: '12:00', enabled: true },
+    dinner: { time: '17:00', enabled: true },
+  };
+  if (meals.breakfast?.enabled) {
     const t = parseTimeToMinutes(meals.breakfast.time);
     blocks.push(makeBlock({
       title: 'Breakfast',
@@ -115,7 +124,7 @@ export function generateDaySchedule(input: SchedulerInput): Omit<ScheduleBlock, 
       aiReason: 'Fuel up for the day',
     }));
   }
-  if (meals.lunch.enabled) {
+  if (meals.lunch?.enabled) {
     const t = parseTimeToMinutes(meals.lunch.time);
     blocks.push(makeBlock({
       title: 'Lunch',
@@ -128,7 +137,7 @@ export function generateDaySchedule(input: SchedulerInput): Omit<ScheduleBlock, 
       aiReason: 'Midday refuel',
     }));
   }
-  if (meals.dinner.enabled) {
+  if (meals.dinner?.enabled) {
     const t = parseTimeToMinutes(meals.dinner.time);
     blocks.push(makeBlock({
       title: 'Dinner',
@@ -251,6 +260,66 @@ export function generateDaySchedule(input: SchedulerInput): Omit<ScheduleBlock, 
 
   // ─── PHASE 4: FILL ────────────────────────────────────────────
   // Fill remaining free slots with tasks, respecting productivity zones
+
+  // Place flexible recurring tasks first (high priority, within time constraints)
+  for (const flex of flexibleRecurring) {
+    blocks.sort((a, b) => a.startMin - b.startMin);
+    const flexSlots = findFreeSlots(wakeMin, windDownMin, blocks);
+    const notBeforeMin = flex.not_before ? parseTimeToMinutes(flex.not_before.substring(0, 5)) : wakeMin;
+    const notAfterMin = flex.not_after ? parseTimeToMinutes(flex.not_after.substring(0, 5)) : windDownMin;
+    const duration = flex.estimated_minutes || 60;
+
+    for (const slot of flexSlots) {
+      const windowStart = Math.max(slot.startMin, notBeforeMin);
+      const windowEnd = Math.min(slot.endMin, notAfterMin);
+      if (windowEnd - windowStart >= duration) {
+        const cat = categories.find((c) => c.id === flex.category_id);
+        blocks.push(makeBlock({
+          title: flex.title,
+          startMin: windowStart,
+          endMin: windowStart + duration,
+          blockType: 'task',
+          categoryId: flex.category_id,
+          isProtected: cat?.isProtected ?? false,
+          locationId: flex.location_id,
+          priority: 80,
+          aiReason: flex.notes ? `Flexible recurring — ${flex.notes}` : 'Flexible recurring event',
+        }));
+        break;
+      }
+    }
+  }
+
+  // Re-insert travel blocks for any newly placed flexible events with locations
+  if (flexibleRecurring.some((f) => f.location_id)) {
+    blocks.sort((a, b) => a.startMin - b.startMin);
+    let prevLocId = homeLocation?.id ?? null;
+    for (const block of [...blocks].sort((a, b) => a.startMin - b.startMin)) {
+      if (block.locationId && block.locationId !== prevLocId && prevLocId) {
+        // Check if travel block already exists right before this block
+        const hasTravelBefore = blocks.some(
+          (b) => b.isTravel && b.endMin === block.startMin
+        );
+        if (!hasTravelBefore) {
+          const travelMin = getTravelMinutes(travelTimes, prevLocId, block.locationId, profile.adhd_buffer_minutes);
+          if (travelMin > 0) {
+            blocks.push(makeBlock({
+              title: `Travel to ${block.title}`,
+              startMin: block.startMin - travelMin,
+              endMin: block.startMin,
+              blockType: 'travel',
+              isTravel: true,
+              priority: 85,
+              aiReason: `${travelMin} min travel + ADHD buffer`,
+            }));
+          }
+        }
+        prevLocId = block.locationId;
+      } else if (block.locationId) {
+        prevLocId = block.locationId;
+      }
+    }
+  }
 
   blocks.sort((a, b) => a.startMin - b.startMin);
   const freeSlots = findFreeSlots(wakeMin, windDownMin, blocks);

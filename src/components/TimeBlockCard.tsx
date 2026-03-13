@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Check, SkipForward, ChevronDown, ChevronUp, MapPin, Clock, MessageSquare, UtensilsCrossed, Heart, Flame, Sparkles, Pencil, ListChecks, Plus, Layers } from 'lucide-react';
+import { Check, SkipForward, ChevronDown, ChevronUp, MapPin, Clock, MessageSquare, Heart, Flame, Sparkles, Pencil, ListChecks, Plus, Layers, UtensilsCrossed } from 'lucide-react';
 import type { ScheduleBlock, Task } from '../types/database';
 import type { Category } from '../types';
 import { getCategoryColors, formatTimeOfDay, formatTime } from '../lib/utils';
@@ -8,8 +8,6 @@ import CategoryPill from './CategoryPill';
 interface TimeBlockCardProps {
   block: ScheduleBlock;
   category?: Category;
-  pixelsPerMinute: number;
-  wakeMinutes: number;
   onComplete: (id: string) => void;
   onSkip: (id: string) => void;
   onAddNote: (id: string, note: string) => void;
@@ -18,7 +16,7 @@ interface TimeBlockCardProps {
 }
 
 export default function TimeBlockCard({
-  block, category, pixelsPerMinute, wakeMinutes, onComplete, onSkip, onAddNote,
+  block, category, onComplete, onSkip, onAddNote,
   onOverrideTravel, multitaskableTasks,
 }: TimeBlockCardProps) {
   const [expanded, setExpanded] = useState(false);
@@ -36,9 +34,6 @@ export default function TimeBlockCard({
   const [newChore, setNewChore] = useState('');
 
   const colors = getCategoryColors(category?.color || 'gray');
-  const startMin = timeToMinutes(block.start_time);
-  const top = (startMin - wakeMinutes) * pixelsPerMinute;
-  const height = Math.max(block.duration_minutes * pixelsPerMinute, 40);
 
   const isCompleted = block.status === 'completed';
   const isSkipped = block.status === 'skipped' || block.status === 'rescheduled';
@@ -48,13 +43,10 @@ export default function TimeBlockCard({
   // ─── Buffer/transition blocks — thin subtle bar ────────────────
   if (block.is_buffer || block.is_transition) {
     return (
-      <div
-        className="absolute left-12 right-2 rounded-md bg-white/[0.02] border border-white/[0.03] flex items-center justify-center"
-        style={{ top: `${top}px`, height: `${Math.max(height, 8)}px` }}
-      >
-        {height >= 20 && (
-          <span className="text-[9px] text-white/15">{block.title}</span>
-        )}
+      <div className="flex items-center gap-2 py-0.5 px-2">
+        <div className="flex-1 h-px bg-white/[0.06]" />
+        <span className="text-[9px] text-white/15 shrink-0">{block.title}</span>
+        <div className="flex-1 h-px bg-white/[0.06]" />
       </div>
     );
   }
@@ -62,13 +54,14 @@ export default function TimeBlockCard({
   // ─── Travel blocks — with override + multi-task ───────────────
   if (block.is_travel) {
     return (
-      <div
-        className={`absolute left-12 right-2 rounded-xl border border-dashed ${colors.border}/30 ${colors.bgLight}/30 overflow-hidden`}
-        style={{ top: `${top}px`, minHeight: `${height}px` }}
-      >
+      <div className={`rounded-xl border border-dashed ${colors.border}/30 ${colors.bgLight}/30 overflow-hidden`}>
         <div className="flex items-center gap-2 px-3 py-2">
           <MapPin size={14} className={colors.text} />
-          <span className={`text-xs ${colors.text}/70 flex-1`}>Travel — {block.duration_minutes}min</span>
+          <div className="flex-1 min-w-0">
+            <span className={`text-xs font-medium ${colors.text}/70`}>{block.title}</span>
+            <span className="text-[10px] text-white/30 ml-2">{block.duration_minutes}min</span>
+          </div>
+          <span className="text-[10px] text-white/30">{formatTimeOfDay(block.start_time)}</span>
           {!isPast && onOverrideTravel && (
             <button
               onClick={() => setOverrideMode(!overrideMode)}
@@ -79,10 +72,6 @@ export default function TimeBlockCard({
             </button>
           )}
         </div>
-
-        {block.ai_reason && (
-          <p className="text-[10px] text-white/20 px-3 pb-1">{block.ai_reason}</p>
-        )}
 
         {overrideMode && onOverrideTravel && (
           <div className="px-3 pb-2 flex items-center gap-2 animate-fade-in-up">
@@ -110,7 +99,7 @@ export default function TimeBlockCard({
           </div>
         )}
 
-        {/* While you wait — multitaskable tasks */}
+        {/* While you travel — multitaskable tasks */}
         {multitaskableTasks && multitaskableTasks.length > 0 && block.duration_minutes >= 10 && (
           <div className="border-t border-white/5 px-3 py-2">
             <div className="flex items-center gap-1 mb-1.5">
@@ -134,12 +123,10 @@ export default function TimeBlockCard({
   // ─── Prep blocks ───────────────────────────────────────────────
   if (block.is_prep) {
     return (
-      <div
-        className={`absolute left-12 right-2 rounded-xl border border-dashed ${colors.border}/30 ${colors.bgLight}/30 flex items-center gap-2 px-3`}
-        style={{ top: `${top}px`, height: `${height}px` }}
-      >
+      <div className={`rounded-xl border border-dashed ${colors.border}/30 ${colors.bgLight}/30 flex items-center gap-2 px-3 py-2`}>
         <Clock size={14} className={colors.text} />
-        <span className={`text-xs ${colors.text}/70`}>Prep — {block.duration_minutes}min</span>
+        <span className={`text-xs ${colors.text}/70`}>{block.title} — {block.duration_minutes}min</span>
+        <span className="text-[10px] text-white/30 ml-auto">{formatTimeOfDay(block.start_time)}</span>
       </div>
     );
   }
@@ -147,10 +134,7 @@ export default function TimeBlockCard({
   // ─── Meal blocks — distinct styling ────────────────────────────
   if (block.is_meal) {
     return (
-      <div
-        className={`absolute left-12 right-2 rounded-xl border border-amber-500/20 bg-amber-500/10 flex items-center gap-2 px-3 ${isPast ? 'opacity-40' : ''}`}
-        style={{ top: `${top}px`, height: `${height}px` }}
-      >
+      <div className={`rounded-xl border border-amber-500/20 bg-amber-500/10 flex items-center gap-2 px-3 py-3 ${isPast ? 'opacity-50' : ''}`}>
         <UtensilsCrossed size={16} className="text-amber-400" />
         <div className="flex-1">
           <span className="text-sm font-medium text-amber-300">{block.title}</span>
@@ -168,10 +152,7 @@ export default function TimeBlockCard({
   // ─── Self-care blocks — distinct styling ───────────────────────
   if (block.is_self_care) {
     return (
-      <div
-        className={`absolute left-12 right-2 rounded-xl border border-teal-500/20 bg-teal-500/10 flex items-center gap-2 px-3 ${isPast ? 'opacity-40' : ''}`}
-        style={{ top: `${top}px`, height: `${height}px` }}
-      >
+      <div className={`rounded-xl border border-teal-500/20 bg-teal-500/10 flex items-center gap-2 px-3 py-3 ${isPast ? 'opacity-50' : ''}`}>
         {block.block_type === 'self_care' ? <Heart size={16} className="text-teal-400" /> : <Sparkles size={16} className="text-teal-400" />}
         <div className="flex-1">
           <span className="text-sm font-medium text-teal-300">{block.title}</span>
@@ -205,10 +186,7 @@ export default function TimeBlockCard({
     };
 
     return (
-      <div
-        className={`absolute left-12 right-2 rounded-xl border border-violet-500/20 bg-violet-500/10 overflow-hidden ${isPast ? 'opacity-40' : ''}`}
-        style={{ top: `${top}px`, minHeight: `${height}px` }}
-      >
+      <div className={`rounded-xl border border-violet-500/20 bg-violet-500/10 overflow-hidden ${isPast ? 'opacity-50' : ''}`}>
         <button
           className="w-full flex items-center gap-2 px-3 py-2 text-left"
           onClick={() => setExpanded(!expanded)}
@@ -284,7 +262,7 @@ export default function TimeBlockCard({
       hard: { dot: 'bg-red-400', label: 'Hard' },
     }[block.difficulty];
     return (
-      <span className="flex items-center gap-1 text-[10px] text-white/30">
+      <span className="flex items-center gap-1 text-[10px] text-white/50">
         <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
         {cfg.label}
       </span>
@@ -294,16 +272,15 @@ export default function TimeBlockCard({
   // ─── Regular task blocks ───────────────────────────────────────
   return (
     <div
-      className={`absolute left-12 right-2 rounded-xl border transition-all duration-200 overflow-hidden
-        ${isCompleted ? `${colors.bgLight}/40 ${colors.border}/20 opacity-60` : ''}
+      className={`rounded-xl border transition-all duration-200 overflow-hidden
+        ${isCompleted ? `${colors.bgLight}/40 ${colors.border}/20 opacity-50` : ''}
         ${isSkipped ? 'bg-white/3 border-white/5 opacity-40' : ''}
         ${isActive ? `${colors.bgLight} ${colors.border} ring-2 ${colors.ring} animate-pulse-soft` : ''}
         ${!isPast && !isActive ? `${colors.bgLight}/60 ${colors.border}/40 hover:${colors.bgLight} hover:${colors.border}/60` : ''}
       `}
-      style={{ top: `${top}px`, minHeight: `${height}px` }}
     >
       <button
-        className="w-full flex items-start gap-2 px-3 py-2 text-left"
+        className="w-full flex items-start gap-2 px-3 py-2.5 text-left"
         onClick={() => setExpanded(!expanded)}
         aria-expanded={expanded}
       >
@@ -369,9 +346,4 @@ export default function TimeBlockCard({
       )}
     </div>
   );
-}
-
-function timeToMinutes(time: string): number {
-  const parts = time.split(':').map(Number);
-  return parts[0] * 60 + parts[1];
 }

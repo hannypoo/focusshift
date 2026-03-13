@@ -27,6 +27,7 @@ export default function AppointmentForm({ onClose }: AppointmentFormProps) {
       toast.error('Fill in the basics first');
       return;
     }
+    if (!profileId) return;
 
     await createTask.mutateAsync({
       profile_id: profileId,
@@ -129,7 +130,7 @@ export default function AppointmentForm({ onClose }: AppointmentFormProps) {
               >
                 None
               </button>
-              {locations.map((loc) => (
+              {(locations || []).map((loc) => (
                 <button
                   key={loc.id}
                   onClick={() => setLocationId(loc.id)}

@@ -23,7 +23,7 @@ export function useScheduleBlocks(date?: string) {
       if (error) throw error;
       return data as ScheduleBlock[];
     },
-    enabled: !!date,
+    enabled: !!date && !!profileId,
   });
 }
 
@@ -44,7 +44,7 @@ export function useScheduleBlocksRange(startDate?: string, endDate?: string) {
       if (error) throw error;
       return data as ScheduleBlock[];
     },
-    enabled: !!startDate && !!endDate,
+    enabled: !!startDate && !!endDate && !!profileId,
   });
 }
 
@@ -53,6 +53,7 @@ export function useCreateBlocks() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (blocks: Omit<ScheduleBlock, 'id' | 'created_at' | 'updated_at'>[]) => {
+      if (!profileId) return;
       const rows = blocks.map((b) => ({ ...b, profile_id: profileId }));
       const { data, error } = await supabase
         .from('schedule_blocks')
@@ -76,6 +77,7 @@ export function useUpdateBlock() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, ...updates }: { id: string } & Partial<ScheduleBlock>) => {
+      if (!profileId) return;
       const { data, error } = await supabase
         .from('schedule_blocks')
         .update(updates)
@@ -101,6 +103,7 @@ export function useDeleteBlocksByIds() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (ids: string[]) => {
+      if (!profileId) return;
       const { error } = await supabase
         .from('schedule_blocks')
         .delete()
@@ -123,6 +126,7 @@ export function useDeleteBlocks() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (date: string) => {
+      if (!profileId) return;
       const { error } = await supabase
         .from('schedule_blocks')
         .delete()

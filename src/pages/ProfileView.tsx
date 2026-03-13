@@ -6,20 +6,33 @@ import { useLocations, useCreateLocation, useDeleteLocation } from '../hooks/use
 import { getCategoryColors } from '../lib/utils';
 import { getWeekStart } from '../lib/dateUtils';
 import { useProfileId } from '../hooks/useProfileId';
-import { MapPin, Target, Layers, Plus, Trash2, ChevronRight } from 'lucide-react';
+import { MapPin, Target, Layers, Plus, Trash2, ChevronRight, CalendarDays } from 'lucide-react';
 import { toast } from 'sonner';
+import { useRecurringTasks } from '../hooks/useRecurringTasks';
+import WeeklyScheduleEditor from '../components/WeeklyScheduleEditor';
+import AddressAutocomplete from '../components/AddressAutocomplete';
 import type { Category } from '../types';
 import type { DbCategory } from '../types/database';
 
-type Section = 'main' | 'categories' | 'goals' | 'locations';
+type Section = 'main' | 'categories' | 'goals' | 'locations' | 'schedule';
 
 export default function ProfileView() {
   const [section, setSection] = useState<Section>('main');
-  const { data: profile } = useProfile();
-  const { data: categories } = useCategories();
+  const { data: profile, isLoading: profileLoading } = useProfile();
+  const { data: categories, isLoading: catsLoading } = useCategories();
   const { data: goals } = useGoals();
   const { data: locations } = useLocations();
+  const { data: recurringTasks } = useRecurringTasks(false);
 
+  if (profileLoading || catsLoading) {
+    return (
+      <div className="flex-1 flex items-center justify-center py-20">
+        <div className="w-8 h-8 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (section === 'schedule') return <WeeklyScheduleEditor onBack={() => setSection('main')} />;
   if (section === 'categories') return <CategoryEditor categories={categories || []} onBack={() => setSection('main')} />;
   if (section === 'goals') return <GoalsEditor goals={goals || []} categories={categories || []} onBack={() => setSection('main')} />;
   if (section === 'locations') return <LocationsEditor locations={locations || []} onBack={() => setSection('main')} />;
@@ -32,6 +45,7 @@ export default function ProfileView() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 pb-24 space-y-2">
+        <NavItem icon={CalendarDays} label="Weekly Schedule" count={recurringTasks?.filter((t) => t.enabled).length} onClick={() => setSection('schedule')} />
         <NavItem icon={Layers} label="Categories" count={categories?.filter((c) => c.enabled).length} onClick={() => setSection('categories')} />
         <NavItem icon={Target} label="Weekly Goals" count={goals?.filter((g) => g.is_active).length} onClick={() => setSection('goals')} />
         <NavItem icon={MapPin} label="Locations" count={locations?.length} onClick={() => setSection('locations')} />
@@ -103,7 +117,7 @@ function GoalsEditor({ goals, categories, onBack }: { goals: { id: string; title
   const profileId = useProfileId();
 
   const handleAdd = async () => {
-    if (!title.trim()) return;
+    if (!title.trim() || !profileId) return;
     await createGoal.mutateAsync({
       profile_id: profileId,
       category_id: catId || null,
@@ -190,7 +204,7 @@ function LocationsEditor({ locations, onBack }: { locations: { id: string; name:
         <h1 className="text-lg font-bold text-white">Locations</h1>
       </div>
       <div className="flex-1 overflow-y-auto px-4 pb-24 space-y-3">
-        {locations.map((loc) => (
+        {(locations || []).map((loc) => (
           <div key={loc.id} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/5 border border-white/5">
             <MapPin size={16} className="text-indigo-400" />
             <div className="flex-1">
@@ -212,11 +226,10 @@ function LocationsEditor({ locations, onBack }: { locations: { id: string; name:
             placeholder="Location name"
             className="w-full h-12 bg-white/5 rounded-xl px-4 text-sm text-white placeholder:text-white/20 border border-white/5 outline-none"
           />
-          <input
+          <AddressAutocomplete
             value={address}
-            onChange={(e) => setAddress(e.target.value)}
+            onChange={setAddress}
             placeholder="Address (optional)"
-            className="w-full h-12 bg-white/5 rounded-xl px-4 text-sm text-white placeholder:text-white/20 border border-white/5 outline-none"
           />
           <button onClick={handleAdd} className="w-full h-12 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-sm font-medium text-white flex items-center justify-center gap-2 transition-colors">
             <Plus size={16} /> Add Location

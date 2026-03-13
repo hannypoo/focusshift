@@ -13,8 +13,8 @@ export default function WeekView() {
   const baseDate = addDays(new Date().toISOString().split('T')[0], weekOffset * 7);
   const weekDates = getWeekDates(baseDate);
 
-  const { data: categories } = useCategories();
-  const { data: blocks } = useScheduleBlocksRange(weekDates[0], weekDates[6]);
+  const { data: categories, isLoading: catsLoading } = useCategories();
+  const { data: blocks, isLoading: blocksLoading } = useScheduleBlocksRange(weekDates[0], weekDates[6]);
   const neglect = useNeglect(categories, blocks);
 
   // Group blocks by date
@@ -28,6 +28,14 @@ export default function WeekView() {
     }
     return map;
   }, [blocks]);
+
+  if (catsLoading || blocksLoading) {
+    return (
+      <div className="flex-1 flex items-center justify-center py-20">
+        <div className="w-8 h-8 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full">

@@ -23,6 +23,7 @@ export function useTaskHistory(categoryId?: string) {
       if (error) throw error;
       return data as TaskHistory[];
     },
+    enabled: !!profileId,
   });
 }
 
@@ -31,6 +32,7 @@ export function useRecordTaskHistory() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (entry: Omit<TaskHistory, 'id' | 'completed_at'>) => {
+      if (!profileId) return;
       const { data, error } = await supabase
         .from('task_history')
         .insert({ ...entry, profile_id: profileId })

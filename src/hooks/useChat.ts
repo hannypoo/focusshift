@@ -2,7 +2,11 @@ import { useState, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { useProfileId } from './useProfileId';
-import type { ChatMessage } from '../types/database';
+import { getDemoResponse } from '../lib/demoResponses';
+import { executeDemoActions } from '../lib/demoActions';
+import { restoreDemoSchedule } from '../lib/demoSchedule';
+import { getToday } from '../lib/utils';
+import type { ChatMessage, ScheduleBlock } from '../types/database';
 import type { ChatResponse, Suggestion } from '../types';
 
 export function useChatHistory() {
@@ -19,6 +23,7 @@ export function useChatHistory() {
       if (error) throw error;
       return data as ChatMessage[];
     },
+    enabled: !!profileId,
   });
 }
 
@@ -31,8 +36,10 @@ export function useChat() {
   const sendMessage = useCallback(async (
     message: string,
     context: Record<string, unknown> = {},
-    history: { role: string; content: string }[] = []
+    history: { role: string; content: string }[] = [],
+    blocks?: ScheduleBlock[]
   ): Promise<ChatResponse | null> => {
+    if (!profileId) return null;
     setIsLoading(true);
 
     try {
@@ -43,14 +50,30 @@ export function useChat() {
         content: message,
       });
 
-      // Call edge function
-      const { data, error } = await supabase.functions.invoke('chat', {
-        body: { message, context, history },
-      });
+      // Try demo response first (pre-seeded scenarios for demo day)
+      const demoResponse = getDemoResponse(message, blocks || []);
+      let response: ChatResponse;
 
-      if (error) throw error;
+      if (demoResponse) {
+        response = demoResponse;
 
-      const response = data as ChatResponse;
+        // Execute demo actions (modifies schedule in Supabase)
+        if (response.actions && response.actions.length > 0) {
+          // Restore schedule to clean slate first so each interaction is independent
+          const freshBlocks = await restoreDemoSchedule(profileId, getToday());
+          await executeDemoActions(response.actions, freshBlocks, profileId, getToday());
+          // Refresh schedule blocks so timeline updates
+          qc.invalidateQueries({ queryKey: ['schedule_blocks'] });
+        }
+      } else {
+        // Fall through to real AI edge function
+        const { data, error } = await supabase.functions.invoke('chat', {
+          body: { message, context, history },
+        });
+
+        if (error) throw error;
+        response = data as ChatResponse;
+      }
 
       // Save assistant response to DB
       await supabase.from('chat_messages').insert({

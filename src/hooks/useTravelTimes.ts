@@ -16,6 +16,7 @@ export function useTravelTimes() {
       if (error) throw error;
       return data as TravelTime[];
     },
+    enabled: !!profileId,
   });
 }
 
@@ -28,6 +29,7 @@ export function useUpsertTravelTime() {
       to_location_id: string;
       duration_minutes: number;
     }) => {
+      if (!profileId) return;
       // Check if entry exists
       const { data: existing } = await supabase
         .from('travel_times')

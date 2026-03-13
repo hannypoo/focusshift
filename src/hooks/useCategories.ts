@@ -34,6 +34,7 @@ export function useCategories() {
       if (error) throw error;
       return (data as DbCategory[]).map(toCategory);
     },
+    enabled: !!profileId,
   });
 }
 
@@ -42,6 +43,7 @@ export function useUpdateCategory() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, ...updates }: { id: string } & Partial<DbCategory>) => {
+      if (!profileId) return;
       const { error } = await supabase
         .from('categories')
         .update(updates)

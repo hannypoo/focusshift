@@ -42,6 +42,7 @@ export default function TaskQuickAdd({ categories, onClose }: TaskQuickAddProps)
       toast.error('Give it a name first');
       return;
     }
+    if (!profileId) return;
 
     await createTask.mutateAsync({
       profile_id: profileId,

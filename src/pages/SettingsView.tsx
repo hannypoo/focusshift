@@ -8,7 +8,7 @@ import ProductivityZoneSetup from '../components/ProductivityZoneSetup';
 import type { ProductivityZone, MealTimes } from '../types/database';
 
 export default function SettingsView() {
-  const { data: profile } = useProfile();
+  const { data: profile, isLoading } = useProfile();
   const updateProfile = useUpdateProfile();
   const { signOut } = useAuth();
 
@@ -70,6 +70,14 @@ export default function SettingsView() {
   const toggleMultitask = () => updateProfile.mutate({ multitask_enabled: !profile?.multitask_enabled });
   const toggleMealReminders = () => updateProfile.mutate({ meal_reminders: !profile?.meal_reminders });
   const toggleWaterReminders = () => updateProfile.mutate({ water_reminders: !profile?.water_reminders });
+
+  if (isLoading) {
+    return (
+      <div className="flex-1 flex items-center justify-center py-20">
+        <div className="w-8 h-8 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full">
