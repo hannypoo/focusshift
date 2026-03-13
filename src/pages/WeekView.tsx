@@ -14,7 +14,7 @@ export default function WeekView() {
   const baseDate = addDays(new Date().toISOString().split('T')[0], weekOffset * 7);
   const weekDates = getWeekDates(baseDate);
 
-  const { data: categories, isLoading: catsLoading } = useCategories();
+  const { isLoading: catsLoading } = useCategories();
   const { data: blocks, isLoading: blocksLoading } = useScheduleBlocksRange(weekDates[0], weekDates[6]);
 
   // Group blocks by date

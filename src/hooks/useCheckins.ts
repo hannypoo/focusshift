@@ -49,7 +49,7 @@ export function useUpsertDailyCheckin() {
       return data as DailyCheckin;
     },
     onSuccess: (data) => {
-      qc.invalidateQueries({ queryKey: ['daily_checkin', data.date] });
+      qc.invalidateQueries({ queryKey: ['daily_checkin', data?.date] });
     },
   });
 }

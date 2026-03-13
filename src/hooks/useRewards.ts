@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { useProfileId } from './useProfileId';
 import type { Reward } from '../types/database';
-import { toast } from 'sonner';
+
 
 export function useRewards(date?: string) {
   const profileId = useProfileId();

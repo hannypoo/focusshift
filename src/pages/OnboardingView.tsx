@@ -160,6 +160,10 @@ export default function OnboardingView({ onComplete }: OnboardingViewProps) {
         start_time: r.time,
         end_time: minutesAfter(r.time, r.duration),
         enabled: true,
+        notes: null,
+        not_before: null,
+        not_after: null,
+        is_flexible: false,
       });
     }
 

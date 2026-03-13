@@ -1,5 +1,4 @@
-import type { ChatResponse, Suggestion } from '../types';
-import type { ScheduleBlock } from '../types/database';
+import type { ChatResponse } from '../types';
 
 // Tracks multi-turn demo conversations (e.g., grocery follow-up)
 let pendingScenario: string | null = null;
@@ -14,7 +13,7 @@ export function resetDemoConversation() {
  */
 export function getDemoResponse(
   message: string,
-  blocks: ScheduleBlock[]
+  _blocks?: unknown
 ): ChatResponse | null {
   const msg = message.toLowerCase().trim();
 
