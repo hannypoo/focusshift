@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { format } from 'date-fns';
-import { Zap, Sun, Moon, Battery, RefreshCw, ClipboardList, RotateCcw } from 'lucide-react';
+import { Zap, Sun, Moon, Battery, RefreshCw, ClipboardList, RotateCcw, Brain } from 'lucide-react';
 import { resetDemoState } from '../lib/demoReset';
 import { enrichBlocks } from '../lib/blockEnricher';
 import { toast } from 'sonner';
@@ -9,6 +9,7 @@ import DayProgress from '../components/DayProgress';
 import EnergyCheckModal from '../components/EnergyCheckModal';
 import Celebration from '../components/Celebration';
 import DailySummary from '../components/DailySummary';
+import CoachingPanel from '../components/CoachingPanel';
 import { useProfile } from '../hooks/useProfile';
 import { useProfileId } from '../hooks/useProfileId';
 import { useCategories } from '../hooks/useCategories';
@@ -48,6 +49,7 @@ export default function TodayView() {
   } | null>(null);
   const [showSummary, setShowSummary] = useState(false);
   const [showEnergyModal, setShowEnergyModal] = useState(false);
+  const [showCoaching, setShowCoaching] = useState(false);
 
   const hasBlocks = enrichedBlocks.length > 0;
 
@@ -202,6 +204,14 @@ export default function TodayView() {
           </div>
           <div className="flex items-center gap-2">
             <button
+              onClick={() => setShowCoaching(true)}
+              className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/40 hover:text-white/70 transition-colors"
+              aria-label="AI coaching insights"
+              title="AI Coach"
+            >
+              <Brain size={18} />
+            </button>
+            <button
               onClick={() => setShowEnergyModal(true)}
               className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/40 hover:text-white/70 transition-colors"
               aria-label="Adjust energy level"
@@ -274,6 +284,9 @@ export default function TodayView() {
           onClose={() => setShowEnergyModal(false)}
         />
       )}
+
+      {/* AI Coaching Panel */}
+      {showCoaching && <CoachingPanel onClose={() => setShowCoaching(false)} />}
     </div>
   );
 }
