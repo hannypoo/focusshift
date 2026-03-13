@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { format } from 'date-fns';
-import { Zap, Sun, Moon, Battery, RefreshCw, ClipboardList, RotateCcw, Brain } from 'lucide-react';
+import { Zap, Sun, Moon, Battery, RefreshCw, ClipboardList, RotateCcw, Brain, Sparkles } from 'lucide-react';
 import { resetDemoState } from '../lib/demoReset';
 import { enrichBlocks } from '../lib/blockEnricher';
 import { toast } from 'sonner';
@@ -10,6 +10,8 @@ import EnergyCheckModal from '../components/EnergyCheckModal';
 import Celebration from '../components/Celebration';
 import DailySummary from '../components/DailySummary';
 import CoachingPanel from '../components/CoachingPanel';
+import NudgeBanner from '../components/NudgeBanner';
+import { useNudges } from '../hooks/useNudges';
 import { useProfile } from '../hooks/useProfile';
 import { useProfileId } from '../hooks/useProfileId';
 import { useCategories } from '../hooks/useCategories';
@@ -50,6 +52,8 @@ export default function TodayView() {
   const [showSummary, setShowSummary] = useState(false);
   const [showEnergyModal, setShowEnergyModal] = useState(false);
   const [showCoaching, setShowCoaching] = useState(false);
+  const { nudges, fetchNudges, getNextNudge } = useNudges();
+  const [dismissedNudges, setDismissedNudges] = useState<Set<string>>(new Set());
 
   const hasBlocks = enrichedBlocks.length > 0;
 
@@ -248,6 +252,31 @@ export default function TodayView() {
 
       {/* Timeline */}
       <div className="flex-1 overflow-y-auto px-2 pb-24">
+        {/* AI Nudge Banner */}
+        {(() => {
+          const nextNudge = getNextNudge();
+          if (nextNudge && !dismissedNudges.has(nextNudge.message)) {
+            return (
+              <NudgeBanner
+                nudge={nextNudge}
+                onDismiss={() => setDismissedNudges((prev) => new Set(prev).add(nextNudge.message))}
+              />
+            );
+          }
+          if (hasBlocks && nudges.length === 0) {
+            return (
+              <button
+                onClick={fetchNudges}
+                className="mx-2 mb-3 w-[calc(100%-16px)] py-2.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/15 border border-indigo-500/20 text-indigo-400 text-xs font-medium transition-colors flex items-center justify-center gap-2"
+              >
+                <Sparkles size={14} />
+                Get AI nudges for today
+              </button>
+            );
+          }
+          return null;
+        })()}
+
         {hasBlocks ? (
           <DayTimeline
             blocks={enrichedBlocks}
